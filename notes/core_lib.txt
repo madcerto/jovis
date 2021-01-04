@@ -1,0 +1,6 @@
+Note: temporarily implemented directly in the compiler
+
+function type, `fn` function
+number types (u8..u128, i8..i128, f8..f128)
+`Type` type
+symbol or address space type

@@ -1,0 +1,10 @@
+inline function calls gotta be explicit
+comptime don't gotta be explicit
+
+perhaps replace ',' with ';'
+
+perhaps '=' can be a method, since immutability is default
+
+two types of identifiers, alphanumeric and symbolic
+
+add type inferrence for scope resolution later on

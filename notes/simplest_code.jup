@@ -1,0 +1,19 @@
+(
+    @.main := #||{
+        x := 24;
+        y := 12.34 // newline is alternative to semicolon
+        
+        MyType := (
+            $&.x: i32, // but all other options are preferred, as here
+            @.my_func := #|self: Self, other: i32|: i32 {
+                tmp := self.x
+                self.x = other
+                tmp
+            }
+        )
+
+        my_object: MyType = (x);
+
+        my_object->my_func 23
+    }
+)

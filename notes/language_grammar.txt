@@ -1,0 +1,21 @@
+Reserved symbols:
+';' - expression end
+'\n' - stored in case of alternative to semicolon
+':' - variable declaration/allocation
+',' - seperator in compound types
+'#' - code to data operator
+'~' - destruction operator
+'.' - float literal and scope resolution
+'"' - string literal
+' \' ' - char literal
+'|' - function signature
+'{', '}' - code block (function)
+'(', ')' - compound type ("structs", tuples)
+
+Reserved identifiers:
+"=" - assignment operator
+"//" - comment
+"->" - pass self to function
+"@" - static/global
+"&" - mutable
+"$" - private/locked
