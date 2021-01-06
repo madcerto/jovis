@@ -1,1 +1,21 @@
-gdjgdgjo
+(
+    :stat.main = () {
+        :&x = 24
+        :y = 12.34
+        :z = "fdfdsf"
+        :c = 'f'
+        
+        :MyType = (
+            i32: mut.x
+            :@.my_func = Self:_ (I32: .other):_ I32 {
+                :tmp = .x
+                .x.=: .other
+                tmp
+            }
+        )
+
+        MyType: my_object = [x]
+
+        my_object.my_func: 23
+    }
+)

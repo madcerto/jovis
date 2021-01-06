@@ -2,6 +2,8 @@ use std::io::prelude::*;
 
 use std::io::Result;
 
+use scanner::Scanner;
+
 mod scanner;
 
 fn main() -> Result<()> {
@@ -22,9 +24,15 @@ fn parse_file(path: String) -> Result<()> {
 
     file.read_to_string(&mut contents).unwrap();
 
-    println!("{}", contents);
-
-    // TODO: Send string to be scanned and parsed
+    let mut scanner = Scanner::new(contents);
+    match scanner.scan_tokens() {
+        Ok(tokens) => {
+            for token in tokens {
+                println!("{}", token.to_string());
+            }
+        },
+        Err(_) => {}
+    }
 
     Ok(())
 }

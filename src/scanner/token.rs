@@ -22,32 +22,34 @@ impl Token {
 #[derive(Debug, Clone)]
 pub enum TokenType {
     // Reserved symbols
-    Semicolon,
-    Newline,
     Colon,
-    Comma,
     Hash,
-    Dot,
-    Pipe,
     LeftBrace, RightBrace,
     LeftParen, RightParen,
+    LeftSqBracket, RightSqBracket,
 
     // Reserved identifiers
     Equal,
-    SlashSlash,
-    MinusGreater,
-    At,
-    Ampersand,
-    DollarSign,
+    Stat,
+    Mut,
+    Underscore,
 
     // Literals
     Literal(Literal),
-    identifier
+    Identifier(IdentType),
+    ScopedIdent(IdentType)
 }
 
 #[derive(Debug, Clone)]
 pub enum Literal {
     String(String),
+    Char(char),
     Integer(i32),
     Float(f32)
+}
+
+#[derive(Debug, Clone)]
+pub enum IdentType {
+    AlphaNumeric,
+    Symbolic
 }
