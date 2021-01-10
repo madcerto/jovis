@@ -1,20 +1,20 @@
 (
-    :stat.main = () {
-        :&x = 24
-        :y = 12.34
-        :z = "fdfdsf"
-        :c = 'f'
+    _:stat:#.main = |() {
+        _:#x = 24
+        _:#y = 12.34
+        _:#z = "fdfdsf"
+        _:#c = 'f'
         
-        :MyType = (
-            i32: mut.x
-            :@.my_func = Self:_ (I32: .other):_ I32 {
-                :tmp = .x
+        _:#MyType = (
+            I32: mut:#.x
+            _:stat:#.my_func = |Self:_ (I32: .other):_ I32 {
+                _:#tmp = .x
                 .x.=: .other
                 tmp
             }
         )
 
-        MyType: my_object = [x]
+        MyType: #my_object = [x] // [.x = x] also valid
 
         my_object.my_func: 23
     }

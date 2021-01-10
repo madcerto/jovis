@@ -31,7 +31,7 @@ fn parse_file(path: String) -> Result<()> {
                 println!("{}", token.to_string());
             }
         },
-        Err(_) => {}
+        Err((line, message)) => {println!("{}", message)}
     }
 
     Ok(())

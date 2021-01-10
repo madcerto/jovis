@@ -29,10 +29,12 @@ pub enum TokenType {
     LeftSqBracket, RightSqBracket,
 
     // Reserved identifiers
+    // Symbolic
     Equal,
-    Stat,
-    Mut,
+    Pipe,
+    // Alphanumeric
     Underscore,
+    Self_,
 
     // Literals
     Literal(Literal),
