@@ -1,5 +1,5 @@
 mod token;
-use token::{IdentType, Literal, Token, TokenType};
+use token::{Literal, Token, TokenType};
 use std::{collections::HashMap, str::FromStr};
 
 pub struct Scanner {
@@ -169,8 +169,8 @@ impl Scanner {
 
         let text = self.source.get(self.start..self.current).unwrap().to_string();
         let ttype = self.an_keywords.get(&text).unwrap_or({
-            &if scoped { TokenType::ScopedIdent(IdentType::AlphaNumeric) }
-            else { TokenType::Identifier(IdentType::AlphaNumeric) }
+            &if scoped { TokenType::ScopedIdent }
+            else { TokenType::Identifier }
         }).clone();
         self.new_token(ttype)
     }
@@ -187,8 +187,8 @@ impl Scanner {
             None
         } else {
             let ttype = self.sym_keywords.get(&text).unwrap_or({
-                &if scoped { TokenType::ScopedIdent(IdentType::Symbolic) }
-                else { TokenType::Identifier(IdentType::Symbolic) }
+                &if scoped { TokenType::ScopedIdent }
+                else { TokenType::Identifier }
             }).clone();
             Some(self.new_token(ttype))
         }

@@ -38,8 +38,8 @@ pub enum TokenType {
 
     // Literals
     Literal(Literal),
-    Identifier(IdentType),
-    ScopedIdent(IdentType)
+    Identifier,
+    ScopedIdent
 }
 
 #[derive(Debug, Clone)]
@@ -50,8 +50,8 @@ pub enum Literal {
     Float(f32)
 }
 
-#[derive(Debug, Clone)]
-pub enum IdentType {
-    AlphaNumeric,
-    Symbolic
-}
+// #[derive(Debug, Clone)]
+// pub enum IdentType {
+//     AlphaNumeric,
+//     Symbolic
+// }
