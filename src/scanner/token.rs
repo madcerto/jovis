@@ -49,9 +49,3 @@ pub enum Literal {
     Integer(i32),
     Float(f32)
 }
-
-// #[derive(Debug, Clone)]
-// pub enum IdentType {
-//     AlphaNumeric,
-//     Symbolic
-// }
