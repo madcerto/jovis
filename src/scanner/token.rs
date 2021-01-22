@@ -23,21 +23,23 @@ impl Token {
 pub enum TokenType {
     // Reserved symbols
     Colon,
-    Hash,
     LeftBrace, RightBrace,
     LeftParen, RightParen,
     LeftSqBracket, RightSqBracket,
-
+    Dollar,
+    Pipe,
+    Semicolon,
     // Reserved identifiers
     // Symbolic
     Equal,
-    Pipe,
+    RightArrow,
     // Alphanumeric
     Underscore,
     Self_,
 
     // Literals
     Literal(Literal),
+    Index(u32),
     Identifier,
     ScopedIdent
 }

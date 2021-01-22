@@ -23,7 +23,7 @@ impl Scanner {
             sym_keywords: {
                 let mut map = HashMap::new();
                 map.insert("=".to_string(), TokenType::Equal);
-                map.insert("|".to_string(), TokenType::Pipe);
+                map.insert("->".to_string(), TokenType::RightArrow);
                 map
             },
             an_keywords: {
@@ -42,7 +42,6 @@ impl Scanner {
                 Some(token) => tokens.push(token),
                 None => {}
             }
-            self.start = self.current;
         }
 
         Ok(tokens)
@@ -51,24 +50,46 @@ impl Scanner {
     fn scan_token(&mut self) -> Result<Option<Token>, (usize, String)> {
         let c = self.advance();
 
-        Ok(match c {
+        let t = Ok(match c {
             ' '|'\r'|'\t' => { None }, // Ignore whitespace
             ':' => Some(self.new_token(TokenType::Colon)),
-            '#' => Some(self.new_token(TokenType::Hash)),
             '{' => Some(self.new_token(TokenType::LeftBrace)),
             '}' => Some(self.new_token(TokenType::RightBrace)),
             '(' => Some(self.new_token(TokenType::LeftParen)),
             ')' => Some(self.new_token(TokenType::RightParen)),
             '[' => Some(self.new_token(TokenType::LeftSqBracket)),
             ']' => Some(self.new_token(TokenType::RightSqBracket)),
+            '$' => Some(self.new_token(TokenType::Dollar)),
+            '|' => Some(self.new_token(TokenType::Pipe)),
+            ';' => Some(self.new_token(TokenType::Semicolon)),
             '\n' => { self.line+=1; None },
             '\'' => self.scan_char()?,
             '"' => self.scan_string()?,
+
             '.' => if Self::is_alpha_numeric(self.peak()) {
                 Some(self.scan_an_ident(true))
-            } else {
+            } else if Self::is_sym(self.peak()) {
                 self.scan_sym_ident(true)
+            } else {
+                return Err((self.line, "Lone colon".to_string()));
             },
+            
+            '-' => if Self::is_digit(self.peak()) {
+                self.advance();
+                Some(self.scan_number())
+            } else { self.scan_sym_ident(false) },
+
+            '^' => self.scan_idx()?,
+
+            '#' => {
+                loop {
+                    let c = self.advance();
+                    if c == '\n' { self.line += 1; break }
+                    else if c == '\0' { break }
+                }
+                None
+            },
+
             _ => if Self::is_digit(c) {
                 Some(self.scan_number())
             } else if Self::is_alpha(c) {
@@ -76,7 +97,11 @@ impl Scanner {
             } else {
                 self.scan_sym_ident(false)
             }
-        })
+        });
+
+        self.start = self.current;
+
+        t
     }
 
     fn advance(&mut self) -> char {
@@ -95,23 +120,7 @@ impl Scanner {
         else { self.source.chars().nth(self.current + 1).unwrap() }
     }
 
-    fn is_at_end(&self) -> bool {
-        self.current>=self.source.len()
-    }
-
-    fn is_alpha(c: char) -> bool {
-        (c>='a' && c<='z') || (c>='A' && c<='Z') || c == '_'
-    }
-
-    fn is_digit(c: char) -> bool {
-        c>='0' && c<='9'
-    }
-
-    fn is_alpha_numeric(c: char) -> bool {
-        Self::is_alpha(c) || Self::is_digit(c)
-    }
-
-    fn new_token(&mut self, ttype: TokenType) -> Token {
+    fn new_token(&self, ttype: TokenType) -> Token {
         let text = self.source.get(self.start..self.current).unwrap().to_string();
 
         Token::new(ttype, text, self.line)
@@ -148,18 +157,16 @@ impl Scanner {
     }
 
     fn scan_number(&mut self) -> Token {
-        let mut next_char = self.peak();
-        while Self::is_digit(next_char) { self.advance(); next_char = self.peak(); }
-        if next_char == '.' && Self::is_digit(self.peak_next()) {
+        while Self::is_digit(self.peak()) { self.advance(); }
+        if self.peak() == '.' && Self::is_digit(self.peak_next()) {
             self.advance();
-            next_char = self.peak();
-            while Self::is_digit(next_char) { self.advance(); next_char = self.peak(); }
+            while Self::is_digit(self.peak()) { self.advance(); }
 
-            let val = self.source.get(self.start..self.current).unwrap();
-            self.new_token(TokenType::Literal(Literal::Float(f32::from_str(val).unwrap())))
+            let text = self.source.get(self.start..self.current).unwrap();
+            self.new_token(TokenType::Literal(Literal::Float(f32::from_str(text).unwrap())))
         } else {
-            let val = self.source.get(self.start..self.current).unwrap();
-            self.new_token(TokenType::Literal(Literal::Integer(i32::from_str(val).unwrap())))
+            let text = self.source.get(self.start..self.current).unwrap();
+            self.new_token(TokenType::Literal(Literal::Integer(i32::from_str(text).unwrap())))
         }
     }
 
@@ -176,22 +183,25 @@ impl Scanner {
     }
 
     fn scan_sym_ident(&mut self, scoped: bool) -> Option<Token> {
-        let mut next_char = self.peak();
-        while Self::is_sym(next_char)
-        { self.advance(); next_char = self.peak(); }
+        while Self::is_sym(self.peak())
+        { self.advance(); }
 
         let text = self.source.get(self.start..self.current).unwrap().to_string();
 
-        if text == "//" {
-            while next_char != '\n' && next_char != '\0' { self.advance(); next_char = self.peak(); }
-            None
-        } else {
-            let ttype = self.sym_keywords.get(&text).unwrap_or({
-                &if scoped { TokenType::ScopedIdent }
-                else { TokenType::Identifier }
-            }).clone();
-            Some(self.new_token(ttype))
-        }
+        let ttype = self.sym_keywords.get(&text).unwrap_or({
+            &if scoped { TokenType::ScopedIdent }
+            else { TokenType::Identifier }
+        }).clone();
+        Some(self.new_token(ttype))
+    }
+
+    fn scan_idx(&mut self) -> Result<Option<Token>, (usize, String)> {
+        self.advance();
+        while Self::is_digit(self.peak()) { self.advance(); }
+
+        let val = self.source.get((self.start + 1)..self.current).unwrap();
+        if val.len() == 0 { Err((self.line, "No index number".to_string())) }
+        else { Ok(Some(self.new_token(TokenType::Index(u32::from_str(val).unwrap())))) }
     }
 
     fn is_sym(c: char) -> bool {
@@ -206,5 +216,21 @@ impl Scanner {
                 }
             }
         }
+    }
+
+    fn is_at_end(&self) -> bool {
+        self.current>=self.source.len()
+    }
+
+    fn is_alpha(c: char) -> bool {
+        (c>='a' && c<='z') || (c>='A' && c<='Z') || c == '_'
+    }
+
+    fn is_digit(c: char) -> bool {
+        c>='0' && c<='9'
+    }
+
+    fn is_alpha_numeric(c: char) -> bool {
+        Self::is_alpha(c) || Self::is_digit(c)
     }
 }
