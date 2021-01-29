@@ -26,7 +26,6 @@ pub enum TokenType {
     LeftBrace, RightBrace,
     LeftParen, RightParen,
     LeftSqBracket, RightSqBracket,
-    Dollar,
     Pipe,
     Semicolon,
     // Reserved identifiers
@@ -36,6 +35,7 @@ pub enum TokenType {
     // Alphanumeric
     Underscore,
     Self_,
+    T,
 
     // Literals
     Literal(Literal),

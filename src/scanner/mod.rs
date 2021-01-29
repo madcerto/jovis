@@ -30,6 +30,7 @@ impl Scanner {
                 let mut map = HashMap::new();
                 map.insert("_".to_string(), TokenType::Underscore);
                 map.insert("Self".to_string(), TokenType::Self_);
+                map.insert("t".to_string(), TokenType::T);
                 map
             }
         }
@@ -48,6 +49,9 @@ impl Scanner {
     }
 
     fn scan_token(&mut self) -> Result<Option<Token>, (usize, String)> {
+        // in jovis you might be able to remove the whole result type by passing the context
+        // of the while loop's block to this function, and instead of returning none it just
+        // returns from that context, basically acting like a `continue` statement.
         let c = self.advance();
 
         let t = Ok(match c {
@@ -59,7 +63,6 @@ impl Scanner {
             ')' => Some(self.new_token(TokenType::RightParen)),
             '[' => Some(self.new_token(TokenType::LeftSqBracket)),
             ']' => Some(self.new_token(TokenType::RightSqBracket)),
-            '$' => Some(self.new_token(TokenType::Dollar)),
             '|' => Some(self.new_token(TokenType::Pipe)),
             ';' => Some(self.new_token(TokenType::Semicolon)),
             '\n' => { self.line+=1; None },
