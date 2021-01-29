@@ -1,15 +1,15 @@
-$[
+t[
     main := { # input inferrence assumes no inputs
         int_val := -24
         float_val := 12.34
         str_val := "fdfdsf"
         char_val := 'f'
 
-        MyType := $[
+        MyType := t[
             _^0 := mut; x: I32
-            my_func: $[Self other: I32] -> I32 = {
+            my_func: t[Self other: I32] -> I32 = |Self|{
                 tmp := x
-                x.,=(other) # _.x._=(_.other)
+                x.,=(other) # _.x.,=(_.other)
                 tmp # _.tmp
             }
         ]
