@@ -54,7 +54,7 @@ impl Scanner {
         // returns from that context, basically acting like a `continue` statement.
         let c = self.advance();
 
-        let t = Ok(match c {
+        let t = match c {
             ' '|'\r'|'\t' => { None }, // Ignore whitespace
             ':' => Some(self.new_token(TokenType::Colon)),
             '{' => Some(self.new_token(TokenType::LeftBrace)),
@@ -100,11 +100,11 @@ impl Scanner {
             } else {
                 self.scan_sym_ident(false)
             }
-        });
+        };
 
         self.start = self.current;
 
-        t
+        Ok(t)
     }
 
     fn advance(&mut self) -> char {
