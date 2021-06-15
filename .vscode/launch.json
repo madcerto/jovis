@@ -1,0 +1,45 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug executable 'jovis'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=jovis",
+                    "--package=jovis"
+                ],
+                "filter": {
+                    "name": "jovis",
+                    "kind": "bin"
+                }
+            },
+            "args": ["/home/putin/Programming/jovis/test_src.jup"],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in executable 'jovis'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--bin=jovis",
+                    "--package=jovis"
+                ],
+                "filter": {
+                    "name": "jovis",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        }
+    ]
+}

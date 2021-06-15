@@ -1,7 +1,9 @@
+use super::literal::Literal;
+
 #[derive(Debug, Clone)]
 pub struct Token {
-    ttype: TokenType,
-    lexeme: String,
+    pub ttype: TokenType,
+    pub lexeme: String,
     line: usize
 }
 
@@ -19,13 +21,15 @@ impl Token {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum TokenType {
     // Reserved symbols
     Colon,
+    Period,
     LeftBrace, RightBrace,
     LeftParen, RightParen,
     LeftSqBracket, RightSqBracket,
+    Carrot,
     Pipe,
     Semicolon,
     // Reserved identifiers
@@ -39,15 +43,9 @@ pub enum TokenType {
 
     // Literals
     Literal(Literal),
-    Index(u32),
+    // Index(u32),
     Identifier,
-    ScopedIdent
-}
+    // ScopedIdent,
 
-#[derive(Debug, Clone)]
-pub enum Literal {
-    String(String),
-    Char(char),
-    Integer(i32),
-    Float(f32)
+    End
 }

@@ -1,10 +1,19 @@
 use std::io::prelude::*;
-
 use std::io::Result;
-
+use interpreter::Interpreter;
+use parser::Parser;
 use scanner::Scanner;
+use pprint::PPrint;
+use env::Environment;
 
 mod scanner;
+mod token;
+mod literal;
+mod expr;
+mod parser;
+mod pprint;
+mod interpreter;
+mod env;
 
 fn main() -> Result<()> {
     let args: Vec<String> = std::env::args().collect();
@@ -27,11 +36,14 @@ fn parse_file(path: String) -> Result<()> {
     let mut scanner = Scanner::new(contents);
     match scanner.scan_tokens() {
         Ok(tokens) => {
-            for token in tokens {
+            for token in tokens.clone() {
                 println!("{}", token.to_string());
             }
+            let mut parser = Parser::new(tokens);
+            let mut env = Environment::new();
+            parser.parse().interpret(&mut env).pprint()
         },
-        Err((line, message)) => {println!("{}", message)}
+        Err((line, message)) => {println!("{} at {}", message, line)}
     }
 
     Ok(())
