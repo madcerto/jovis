@@ -1,4 +1,4 @@
-use super::token::{Token, TokenType};
+use super::{Token, TokenType};
 use super::literal::Literal;
 use std::{collections::HashMap, str::FromStr};
 

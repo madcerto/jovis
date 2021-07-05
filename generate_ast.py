@@ -1,10 +1,11 @@
 import sys
 
 def define_ast(out_dir, base_name, types):
-    path  = out_dir + "/" + base_name.lower() + ".rs"
+    path  = out_dir + "/" + base_name.lower() + "/mod.rs"
     with open(path, "w") as f:
-        f.write("use super::token::Token;\nuse super::literal::Literal;\n")
-        f.write("use std::fmt::Debug;\n\n#[derive(Clone, Debug)]\npub enum " + base_name + " {\n")
+        f.write("pub mod interpreter;\npub mod parser;\n\n")
+        f.write("use super::token::{Token, literal::Literal};\nuse std::fmt::Debug;\n\n")
+        f.write("#[derive(Clone, Debug)]\npub enum " + base_name + " {\n")
 
         for _type in types:
             type_name = _type.split("|")[0].strip()
@@ -67,7 +68,7 @@ if __name__ == "__main__":
     define_ast(out_dir, "Expr", [
         "Unary | Token, Expr",
         "Binary | Expr, Token, Expr",
-        "ScopeRes | Expr, Expr",
+        "MsgEmission | Expr, Expr",
         "BinaryOpt | Expr, Token, Option<Box<Expr>>",
         "Object | Vec<Expr>",
         "Call | Expr, Vec<Expr>",

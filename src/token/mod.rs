@@ -1,4 +1,7 @@
-use super::literal::Literal;
+pub mod scanner;
+pub mod literal;
+
+use literal::Literal;
 
 #[derive(Debug, Clone)]
 pub struct Token {

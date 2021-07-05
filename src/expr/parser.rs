@@ -1,6 +1,6 @@
-use super::expr::Expr;
-use super::token::{Token, TokenType};
-use super::pprint::PPrint;
+use super::Expr;
+use crate::token::{Token, TokenType};
+use crate::pprint::PPrint;
 
 pub struct Parser {
     source: Vec<Token>,
@@ -34,7 +34,7 @@ impl Parser {
             TokenType::Equal
             | TokenType::RightArrow
             | TokenType::Carrot => expr = self.binary(expr)?,
-            TokenType::Period => expr = self.scope_res(expr)?,
+            TokenType::Identifier => expr = self.msg_emission(expr)?,
             _ => break
         }}
         expr.pprint();
@@ -143,16 +143,19 @@ impl Parser {
         expr.pprint();
         Ok(expr)
     }
-    fn scope_res(&mut self, left: Expr) -> Result<Expr, ParseError> {
+    fn msg_emission(&mut self, left: Expr) -> Result<Expr, ParseError> {
         self.advance();
-        if self.peak().ttype == TokenType::Identifier {
-            self.advance();
-            let expr = Expr::ScopeRes(Box::new(left), Box::new(
-                Expr::Identifier(self.previous())
-            ));
-            expr.pprint();
-            Ok(expr)
-        } else { panic!("oh no!") } //TODO
+        Ok( Expr::MsgEmission(Box::new(left), Box::new(
+            Expr::Identifier(self.previous())
+        )))
+        // if self.peak().ttype == TokenType::Identifier {
+        //     self.advance();
+        //     let expr = Expr::MsgEmission(Box::new(left), Box::new(
+        //         Expr::Identifier(self.previous())
+        //     ));
+        //     expr.pprint();
+        //     Ok(expr)
+        // } else { return Err(ParseError { tkn: self.peak(), msg: "expected identifier for message name".into() }) }
     }
 
     fn is_at_end(&self) -> bool {

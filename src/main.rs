@@ -1,19 +1,14 @@
 use std::io::prelude::*;
 use std::io::Result;
-use interpreter::Interpreter;
-use parser::Parser;
-use scanner::Scanner;
+use expr::interpreter;
+use expr::interpreter::Interpreter;
+use expr::parser::Parser;
+use token::scanner::Scanner;
 use pprint::PPrint;
-use env::Environment;
 
-mod scanner;
 mod token;
-mod literal;
 mod expr;
-mod parser;
 mod pprint;
-mod interpreter;
-mod env;
 
 fn main() -> Result<()> {
     let args: Vec<String> = std::env::args().collect();
@@ -40,8 +35,8 @@ fn parse_file(path: String) -> Result<()> {
                 println!("{}", token.to_string());
             }
             let mut parser = Parser::new(tokens);
-            let mut env = Environment::new();
-            parser.parse().interpret(&mut env).pprint()
+            let mut env = interpreter::new_env();
+            parser.parse().interpret(&mut env);
         },
         Err((line, message)) => {println!("{} at {}", message, line)}
     }

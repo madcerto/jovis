@@ -1,5 +1,5 @@
 use super::expr::Expr;
-use super::literal::Literal;
+use super::token::literal::Literal;
 
 pub trait PPrint {
     fn prettify(&self) -> String;
@@ -13,7 +13,7 @@ impl PPrint for Expr {
                 format!("( {} {} )", operator.lexeme, operand.prettify()),
             Expr::Binary(left, op, right) =>
                 format!("( {} {} {} )", op.lexeme, left.prettify(), right.prettify()),
-            Expr::ScopeRes(left, right) =>
+            Expr::MsgEmission(left, right) =>
                 format!("( {} {} {} )", ".", left.prettify(), right.prettify()),
             Expr::BinaryOpt(left, op, right) => match right {
                 Some(right) => format!("( {} {} {} )", op.lexeme, left.prettify(), right.prettify()),
@@ -64,14 +64,14 @@ impl PPrint for Literal {
             Literal::Char(val) => format!("'{}'", val),
             Literal::Integer(val) => format!("{}", val),
             Literal::Float(val) => format!("{}", val),
-            Literal::Object(vals) => {
-                let mut str = "[ ".to_string();
-                for val in vals {
-                    str.push_str(format!("{} ", val.prettify()).as_str())
-                }
-                str.push_str("]");
-                str
-            },
+            // Literal::Object(vals) => {
+            //     let mut str = "[ ".to_string();
+            //     for val in vals {
+            //         str.push_str(format!("{} ", val.prettify()).as_str())
+            //     }
+            //     str.push_str("]");
+            //     str
+            // },
         }
     }
 
