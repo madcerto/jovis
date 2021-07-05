@@ -11,6 +11,7 @@ use crate::token::TokenType;
 
 pub trait Interpreter {
     fn interpret(self, env: &mut Environment) -> Vec<u8>;
+    fn interpret_new_env(self) -> Vec<u8>;
 }
 
 impl Interpreter for Expr {
@@ -58,8 +59,8 @@ impl Interpreter for Expr {
             Expr::Literal(inner) => todo!(),
         }
     }
-}
 
-pub fn new_env() -> Environment {
-    Environment::new()
+    fn interpret_new_env(self) -> Vec<u8> {
+        self.interpret(&mut Environment::new())
+    }
 }

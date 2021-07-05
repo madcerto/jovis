@@ -35,8 +35,7 @@ fn parse_file(path: String) -> Result<()> {
                 println!("{}", token.to_string());
             }
             let mut parser = Parser::new(tokens);
-            let mut env = interpreter::new_env();
-            parser.parse().interpret(&mut env);
+            parser.parse().interpret_new_env();
         },
         Err((line, message)) => {println!("{} at {}", message, line)}
     }
