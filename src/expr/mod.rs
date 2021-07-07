@@ -1,4 +1,4 @@
-pub mod interpreter;
+pub mod compiler;
 pub mod parser;
 
 use super::token::{Token, literal::Literal};

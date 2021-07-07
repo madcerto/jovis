@@ -1,10 +1,8 @@
 use std::io::prelude::*;
 use std::io::Result;
-use expr::interpreter;
-use expr::interpreter::Interpreter;
+use expr::compiler::Interpret;
 use expr::parser::Parser;
 use token::scanner::Scanner;
-use pprint::PPrint;
 
 mod token;
 mod expr;

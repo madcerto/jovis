@@ -1,20 +1,14 @@
-mod env;
-mod dtype;
-
-use env::Environment;
-use dtype::{DType, Object};
-
 use std::collections::HashMap;
-use crate::token::literal::Literal;
-use super::Expr;
+// use crate::token::literal::Literal;
+use super::{Expr, Environment, DType, Object};
 use crate::token::TokenType;
 
-pub trait Interpreter {
+pub trait Interpret {
     fn interpret(self, env: &mut Environment) -> Vec<u8>;
     fn interpret_new_env(self) -> Vec<u8>;
 }
 
-impl Interpreter for Expr {
+impl Interpret for Expr {
     fn interpret(self, env: &mut Environment) -> Vec<u8> {
         match self {
             Expr::Unary(_, _) => todo!(),
@@ -55,8 +49,8 @@ impl Interpreter for Expr {
                 last
             },
             // Expr::Identifier(name) => env.get(name.lexeme),
-            Expr::Identifier(name) => todo!(),
-            Expr::Literal(inner) => todo!(),
+            Expr::Identifier(_name) => todo!(),
+            Expr::Literal(_inner) => todo!(),
         }
     }
 
