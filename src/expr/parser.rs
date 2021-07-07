@@ -46,7 +46,7 @@ impl Parser {
             TokenType::Literal(inner) => { self.advance(); Ok(Expr::Literal(inner)) },
             TokenType::Identifier
             | TokenType::Underscore
-            | TokenType::Self_ => { self.advance(); Ok(Expr::Identifier(tkn)) },
+            | TokenType::Self_ => { self.advance(); Ok(Expr::MsgEmission(None, tkn)) },
             TokenType::T => { self.advance(); Ok(Expr::Unary(tkn, Box::new(self.expr()?))) }
             TokenType::LeftSqBracket => {
                 self.advance();
@@ -144,18 +144,7 @@ impl Parser {
         Ok(expr)
     }
     fn msg_emission(&mut self, left: Expr) -> Result<Expr, ParseError> {
-        self.advance();
-        Ok( Expr::MsgEmission(Box::new(left), Box::new(
-            Expr::Identifier(self.previous())
-        )))
-        // if self.peak().ttype == TokenType::Identifier {
-        //     self.advance();
-        //     let expr = Expr::MsgEmission(Box::new(left), Box::new(
-        //         Expr::Identifier(self.previous())
-        //     ));
-        //     expr.pprint();
-        //     Ok(expr)
-        // } else { return Err(ParseError { tkn: self.peak(), msg: "expected identifier for message name".into() }) }
+        Ok( Expr::MsgEmission(Some(Box::new(left)), self.advance()) )
     }
 
     fn is_at_end(&self) -> bool {

@@ -17,7 +17,7 @@ impl Interpret for Expr {
                     let name  = match *left {
                         Expr::BinaryOpt(left, op, _) => match op.ttype {
                             TokenType::Colon => match *left {
-                                Expr::Identifier(name) => name.lexeme,
+                                Expr::MsgEmission(None, name) => name.lexeme,
                                 _ => panic!("expected identifier")
                             },
                             _ => panic!("expected declaration")
@@ -49,7 +49,6 @@ impl Interpret for Expr {
                 last
             },
             // Expr::Identifier(name) => env.get(name.lexeme),
-            Expr::Identifier(_name) => todo!(),
             Expr::Literal(_inner) => todo!(),
         }
     }

@@ -7,7 +7,7 @@ use literal::Literal;
 pub struct Token {
     pub ttype: TokenType,
     pub lexeme: String,
-    line: usize
+    pub line: usize
 }
 
 impl Token {

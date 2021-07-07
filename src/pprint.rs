@@ -13,8 +13,10 @@ impl PPrint for Expr {
                 format!("( {} {} )", operator.lexeme, operand.prettify()),
             Expr::Binary(left, op, right) =>
                 format!("( {} {} {} )", op.lexeme, left.prettify(), right.prettify()),
-            Expr::MsgEmission(left, right) =>
-                format!("( {} {} {} )", ".", left.prettify(), right.prettify()),
+            Expr::MsgEmission(self_expr, msg_name) => match self_expr {
+                Some(self_expr) => format!("{} {}", self_expr.prettify(), msg_name.lexeme),
+                None => format!("{}", msg_name.lexeme),
+            },
             Expr::BinaryOpt(left, op, right) => match right {
                 Some(right) => format!("( {} {} {} )", op.lexeme, left.prettify(), right.prettify()),
                 None => format!("( {} {} )", op.lexeme, left.prettify())
@@ -47,7 +49,7 @@ impl PPrint for Expr {
                 str.push_str("}");
                 str
             },
-            Expr::Identifier(name) => format!("{}", name.lexeme),
+            // Expr::Identifier(name) => format!("{}", name.lexeme),
             Expr::Literal(inner) => format!("{}", inner.prettify()),
         }
     }
