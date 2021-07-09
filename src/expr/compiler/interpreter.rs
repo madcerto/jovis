@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 // use crate::token::literal::Literal;
 use super::{Expr, Environment, DType, Object};
 use crate::token::TokenType;
@@ -26,7 +25,7 @@ impl Interpret for Expr {
                     };
                     let val = right.interpret(env);
                     // env.define(name, val.clone(), Object { dtype: DType { size: 0, msgs: HashMap::new() }, address: 0 });
-                    env.define(name, DType { size: 0, msgs: HashMap::new() }, Object { dtype: DType { size: 0, msgs: HashMap::new() }, address: 0 });
+                    env.define(name, DType { size: 0, msgs: vec![] }, Object { dtype: DType { size: 0, msgs: vec![] }, address: 0 });
                     val
                 },
                 _ => panic!("unexpected binary operator")

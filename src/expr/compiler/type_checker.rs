@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use crate::token::{Token, TokenType};
 use super::{DType, Expr};
 
@@ -32,7 +31,7 @@ impl TypeCheck for Expr {
                     // if initialization, add name to object's msgs
                     size += expr.check().size;
                 }
-                DType { size, msgs: HashMap::new() }
+                DType { size, msgs: vec![] }
             },
             Expr::Call(_, _) => todo!(),
             Expr::CodeBlock(_, exprs) => {

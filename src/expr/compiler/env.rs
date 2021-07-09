@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use super::{DType, Object};
 
 pub struct Environment {
@@ -12,7 +11,7 @@ impl Environment {
         Self {
             stack: Vec::with_capacity(0),
             sp: 0,
-            stack_type: DType {size: 0, msgs: HashMap::new()}
+            stack_type: DType {size: 0, msgs: vec![]}
         }
     }
 
