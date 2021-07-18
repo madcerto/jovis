@@ -3,5 +3,6 @@ pub enum Literal {
     String(String),
     Char(char),
     Integer(i32),
-    Float(f32)
+    Float(f32),
+    Byte(u8)
 }
