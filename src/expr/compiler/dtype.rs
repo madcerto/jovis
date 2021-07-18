@@ -2,7 +2,7 @@ use crate::{expr::Expr, token::literal::Literal};
 
 use super::Environment;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct DType {
     pub size: usize,
     pub msgs: Vec<Msg>
@@ -56,16 +56,11 @@ impl DType {
     }
 }
 
-pub struct Object {
-    pub dtype: DType,
-    pub address: usize
-}
-
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Msg {
-    name: String,
+    pub name: String,
     constructor: fn(self_address: usize, env: Environment, arg: Option<Expr>) -> Expr,
-    ret_type: DType
+    pub ret_type: DType
 }
 
 impl Msg {
@@ -74,5 +69,9 @@ impl Msg {
         ret_type: DType
     ) -> Self {
         Self { name, constructor, ret_type }
+    }
+
+    pub fn construct(&self) -> Expr {
+        Expr::Object(vec![])
     }
 }

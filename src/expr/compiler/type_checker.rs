@@ -1,14 +1,5 @@
 use crate::{expr::compiler::{Interpret, dtype::Msg}, token::{Token, TokenType}};
 use super::{DType, Expr, env::Environment};
-
-// Type checker function takes an expression and the environment of the block that the expression is in.
-// it returns the type of the expression, and records type info about the stack in the environment
-// it records an overall type of the stack,
-// recording the messages needed to get the values on the stack, and the memory needed for them
-// it also records a comptime-type of the stack
-// recording the same as for overall but for comptime-available data, and also storing that in a virtual stack
-// it checks whether an expression is available at comptime by sending it to the interpreter
-// which is basically a type checker that also returns a value if it possible to be evaluated
 pub trait TypeCheck {
     fn check(&mut self, env: &mut Environment) -> Result<DType, ()>;
 }
