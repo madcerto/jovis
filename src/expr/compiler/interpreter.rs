@@ -1,5 +1,5 @@
-use super::{Expr, Environment, DType, Object, dtype::Msg};
-use crate::token::{TokenType, literal::Literal};
+use super::{Expr, Environment, DType, dtype::Msg};
+use crate::{token::{TokenType, literal::Literal}};
 
 pub trait Interpret {
     fn interpret(self, env: &mut Environment) -> Option<(Vec<u8>, DType)>;
@@ -23,14 +23,57 @@ impl Interpret for Expr {
                         _ => panic!("expected declaration")
                     };
                     let val = right.interpret(env);
-                    // env.define(name, val.clone(), Object { dtype: DType { size: 0, msgs: HashMap::new() }, address: 0 });
-                    env.define(name, DType { size: 0, msgs: vec![] }, Object { dtype: DType { size: 0, msgs: vec![] }, address: 0 });
+                    match val.clone() {
+                        Some((bytes, dtype)) => {
+                            fn constructor(self_address: usize, env: Environment, arg: Option<Expr>) -> Expr
+                            { Expr::Object(vec![]) }
+                            env.add_ct_msg(Msg::new(name, constructor, dtype));
+                        },
+                        None => return None,
+                    }
                     val
                 },
                 _ => panic!("unexpected binary operator")
             },
-            Expr::MsgEmission(_, _) => todo!(),
-            Expr::BinaryOpt(_, _, _) => todo!(),
+            Expr::MsgEmission(self_expr, msg_name) => {
+                let self_t = match self_expr {
+                    Some(inner) => inner.interpret(env)?.1,
+                    None => env.ct_stack_type.clone(),
+                };
+                for msg in self_t.msgs {
+                    if msg.name == msg_name.lexeme {
+                        let (bytes, dtype) = msg.construct().interpret(env)?;
+                        if dtype != msg.ret_type { return None }
+                        return Some((bytes, msg.ret_type)) // TODO: emit message
+                    }
+                }
+                None
+            },
+            Expr::BinaryOpt(left, op, right_opt) => {
+                match op.ttype {
+                    TokenType::Colon => {
+                        let name = match *left {
+                            Expr::MsgEmission(None, name) => name.lexeme,
+                            _ => panic!("expected identifier")
+                        };
+                        let type_opt = match right_opt {
+                            Some(right) => {
+                                match right.interpret(env) {
+                                    Some((bytes, dtype)) => {
+                                        // TODO: check dtype
+                                        // TODO: convert bytes to DType
+                                        Some(bytes)
+                                    },
+                                    None => panic!("type in declaration is not static"),
+                                }
+                            },
+                            None => None
+                        };
+                        todo!() // TODO: return declaration data type
+                    },
+                    _ => panic!("unexpected operator in binary_opt")
+                }
+            },
             Expr::Object(exprs) => {
                 let mut bytes = vec![];
                 let mut msgs = vec![];
