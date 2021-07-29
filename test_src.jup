@@ -1,28 +1,4 @@
-t[
-    pub; main := { # input inferrence assumes no inputs
-        int_val := -24
-        float_val := 12.34
-        str_val := "fdfdsf"
-        char_val := 'f'
-
-        MyType := t[
-            _^0 := mut; x: I32
-            my_func: t[Self other: I32] -> I32 = |Self|{
-                tmp := x
-                x.,=(other) # _.x.,=(_.other)
-                tmp # _.tmp
-            }
-        ]
-
-        mut; x := 1
-        my_object: MyType = [x] # [x := x]
-
-        my_object.my_func(23)
-
-        while( x.>(1).or(x.<(-1)) |x|{
-            x.-=(1)
-            x.*=(-1)
-        })
-        []
-    }
-]
+{
+    var := 65
+    var
+}

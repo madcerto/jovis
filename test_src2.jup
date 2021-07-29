@@ -1,4 +1,31 @@
-{
-    var := 65
-    var
-}
+[
+    pub: _main ;= ||{ # input inferrence assumes no inputs
+        int_val ;= -24
+        float_val ;= 12.34
+        str_val ;= "fdfdsf"
+        char_val ;= 'f'
+
+        MyType ;= struct: [
+            mut: x; I32
+            my_method; {(Self other; I32) -> I32} = ||{
+                tmp ;= x
+                x.,=: other # _.x.,=(_.other)
+                tmp # _.tmp
+            }
+        ]
+
+        mut: x ;= 1
+        my_object; MyType = [x] # [x ;= x] # [x => x]
+
+        my_object.my_method: 23 # MyType.my_method.!:[my_object 23]
+
+        if_else: [x.!=:23 {
+            while: [{x.>: 1}.or: {x.<: -1} {
+                x.-=: 1
+                x.*=: -1
+            }]
+        }, {
+            print.!: "x is 23"
+        }]
+    }
+]
