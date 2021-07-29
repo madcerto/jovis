@@ -1,5 +1,6 @@
 use super::{DType, dtype::Msg};
 
+#[derive(Debug, Clone, PartialEq)]
 pub struct Environment {
     stack: Vec<Vec<u8>>,
     sp: usize,
@@ -20,7 +21,10 @@ impl Environment {
     pub fn add_ct_msg(&mut self, msg: Msg) {
         self.ct_stack_type.msgs.push(msg);
     }
-    pub fn get_stack(&self, addr: usize) {
+    pub fn add_rt_msg(&mut self, msg: Msg) {
+        self.rt_stack_type.msgs.push(msg);
+    }
+    pub fn _get_stack(&self, _addr: usize) {
 
     }
 
