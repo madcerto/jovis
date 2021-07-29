@@ -9,7 +9,7 @@
             mut: x; I32
             my_method; {(Self other; I32) -> I32} = ||{
                 tmp ;= x
-                x.,=: other # _.x.,=(_.other)
+                x._=: other # _.x._=(_.other)
                 tmp # _.tmp
             }
         ]
