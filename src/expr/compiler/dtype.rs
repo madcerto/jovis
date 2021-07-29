@@ -9,7 +9,7 @@ pub struct DType {
     pub msgs: Vec<Msg>
 }
 
-pub const Void: DType = DType {
+pub const VOID: DType = DType {
     size: 0,
     msgs: vec![]
 };

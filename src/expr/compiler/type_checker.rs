@@ -91,7 +91,7 @@ impl TypeCheck for Expr {
                 Ok(DType { size, msgs })
             },
             Expr::CodeBlock(exprs) => {
-                let mut last_type = Void;
+                let mut last_type = VOID;
                 for expr in exprs {
                     println!("{:?}", expr);
                     last_type = expr.check(env)?;
@@ -107,7 +107,7 @@ impl TypeCheck for Expr {
             Expr::Type(exprs) => {
                 for expr in exprs {
                     let dtype = expr.check(env)?;
-                    if dtype != Void // TODO: replace with types for type and declaration
+                    if dtype != VOID // TODO: replace with types for type and declaration
                     && dtype != I32
                         { panic!("unexpected expression in type definition") }
                 }
