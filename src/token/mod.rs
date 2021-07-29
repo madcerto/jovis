@@ -20,7 +20,11 @@ impl Token {
     }
 
     pub fn to_string(&self) -> String {
-        format!("{:?} {}", self.ttype, self.lexeme)
+        match &self.ttype {
+            TokenType::Identifier => format!("{:?} {} ln{}", self.ttype, self.lexeme, self.line),
+            TokenType::Literal(lit) => format!("{:?} ln{}", lit, self.line),
+            _ => format!("{:?} ln{}", self.ttype, self.line),
+        }
     }
 }
 
