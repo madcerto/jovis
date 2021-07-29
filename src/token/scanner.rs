@@ -53,7 +53,7 @@ impl Scanner {
         // in jovis you might be able to remove the whole result type by passing the context
         // of the while loop's block to this function, and instead of returning none it just
         // returns from that context, basically acting like a `continue` statement.
-        let c = self.advance();
+        let mut c = self.advance();
 
         let t = match c {
             ' '|'\r'|'\t' => { None }, // Ignore whitespace
@@ -88,6 +88,16 @@ impl Scanner {
 
             _ => Some(if Self::is_digit(c) {
                 self.scan_number()
+            } else if c == '_' {
+                loop {
+                    c = self.advance();
+                    if c != '_' { break }
+                }
+                if Self::is_alpha(c) {
+                    self.scan_an_ident()
+                } else {
+                    self.scan_sym_ident()
+                }
             } else if Self::is_alpha(c) {
                 self.scan_an_ident()
             } else {
@@ -105,12 +115,10 @@ impl Scanner {
 
         self.source.chars().nth(self.current - 1).unwrap()
     }
-
     fn peak(&self) -> char {
         if self.is_at_end() { '\0' }
         else { self.source.chars().nth(self.current).unwrap() }
     }
-
     fn peak_next(&self) -> char {
         if self.current + 1 >= self.source.len() { '\0' }
         else { self.source.chars().nth(self.current + 1).unwrap() }
@@ -134,7 +142,6 @@ impl Scanner {
             } else { Err((self.line, "Unterminated or oversized character literal".to_string())) } // TODO: keep scanning after one character to see if it's oversized or unterminated
         }
     }
-
     fn scan_string(&mut self) -> Result<Option<Token>, (usize, String)> {
         let mut next_char = self.peak();
         while next_char != '"' {
@@ -151,7 +158,6 @@ impl Scanner {
         self.advance();
         Ok(Some(self.new_token(TokenType::Literal(Literal::String(val)))))
     }
-
     fn scan_number(&mut self) -> Token {
         while Self::is_digit(self.peak()) { self.advance(); }
         if self.peak() == '.' && Self::is_digit(self.peak_next()) {
@@ -165,7 +171,6 @@ impl Scanner {
             self.new_token(TokenType::Literal(Literal::Integer(i32::from_str(text).unwrap())))
         }
     }
-
     fn scan_an_ident(&mut self) -> Token {
         while Self::is_alpha_numeric(self.peak()) { self.advance(); }
 
@@ -173,7 +178,6 @@ impl Scanner {
         let ttype = self.an_keywords.get(&text).unwrap_or(&TokenType::Identifier).clone();
         self.new_token(ttype)
     }
-
     fn scan_sym_ident(&mut self) -> Token {
         while Self::is_sym(self.peak())
         { self.advance(); }
@@ -189,10 +193,12 @@ impl Scanner {
             ' '|'\r'|'\t'|':'|'#'|'.'|'{'|'}'|'('|')'|'['|']'|'\n'|'\''|'"'|'\0'
                 => false,
             _ => {
-                if Self::is_alpha_numeric(c) {
-                    false
-                } else {
+                if (c < 'a' || c > 'z')
+                && (c < 'A' || c > 'Z')
+                && (c < '0' || c > '9') {
                     true
+                } else {
+                    false
                 }
             }
         }
