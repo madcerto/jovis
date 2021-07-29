@@ -28,13 +28,11 @@ impl Parser {
     fn expr(&mut self) -> Result<Expr, ParseError> {
         let mut expr = self.literal()?;
         loop { match self.peak().ttype {
-            TokenType::LeftParen => expr = self.call(expr)?,
-            TokenType::Semicolon
-            | TokenType::Colon => expr = self.binary_opt(expr)?,
+            TokenType::Semicolon => expr = self.binary_opt(expr)?,
             TokenType::Equal
             | TokenType::RightArrow
             | TokenType::Carrot => expr = self.binary(expr)?,
-            TokenType::Identifier => expr = self.msg_emission(expr)?,
+            TokenType::Period => expr = self.msg_emission(expr)?,
             _ => break
         }}
         expr.pprint();
@@ -46,8 +44,17 @@ impl Parser {
             TokenType::Literal(inner) => { self.advance(); Ok(Expr::Literal(inner)) },
             TokenType::Identifier
             | TokenType::Underscore
-            | TokenType::Self_ => { self.advance(); Ok(Expr::MsgEmission(None, tkn)) },
-            TokenType::T => { self.advance(); Ok(Expr::Unary(tkn, Box::new(self.expr()?))) }
+            | TokenType::Self_ => {
+                self.advance();
+                let mut arg = None;
+
+                if let TokenType::Colon = self.peak().ttype {
+                    self.advance();
+                    arg = Some(Box::new(self.expr()?));
+                }
+
+                Ok(Expr::MsgEmission(None, tkn, arg))
+            },
             TokenType::LeftSqBracket => {
                 self.advance();
                 let mut exprs = Vec::new();
@@ -72,22 +79,7 @@ impl Parser {
                 }
                 self.advance();
 
-                if let TokenType::LeftBrace = self.peak().ttype {
-                    self.advance();
-                    let mut exprs = Vec::new();
-                    while self.peak().ttype != TokenType::RightBrace {
-                        if let TokenType::End = self.peak().ttype { return Err(ParseError{
-                            tkn: self.peak(),
-                            msg: "Unterminated code block".to_string()
-                        }) }
-                        exprs.push(self.expr()?);
-                    }
-                    self.advance();
-                    Ok(Expr::CodeBlock(capture_list, exprs))
-                } else { Err(ParseError{
-                    tkn: self.peak(),
-                    msg: "Expected block after capture list".to_string()
-                }) }
+                Ok(Expr::Fn(capture_list, Box::new(self.expr()?)))
             },
             TokenType::LeftBrace => {
                 self.advance();
@@ -100,40 +92,55 @@ impl Parser {
                     exprs.push(self.expr()?);
                 }
                 self.advance();
-                Ok(Expr::CodeBlock(vec![], exprs))
+                Ok(Expr::CodeBlock(exprs))
             }
+            TokenType::LeftParen => self.dtype(),
             _ => Err(ParseError{ tkn, msg: "Invalid expression-starting token".to_string() })
         };
         expr.clone()?.pprint();
         expr
     }
-    fn call(&mut self, left: Expr) -> Result<Expr, ParseError> {
+    fn dtype(&mut self) -> Result<Expr, ParseError> {
         self.advance();
         let mut exprs = Vec::new();
         while self.peak().ttype != TokenType::RightParen {
-            if let TokenType::End = self.peak().ttype { return Err(ParseError{
+            if self.peak().ttype == TokenType::End { return Err(ParseError{
                 tkn: self.peak(),
-                msg: "Unterminated argument list".to_string()
+                msg: "Unterminated type definition".to_string()
             }) }
             exprs.push(self.expr()?);
         }
         self.advance();
-        let expr  = Expr::Call(Box::new(left), exprs);
+        let expr  = Expr::Type(exprs);
         expr.pprint();
         Ok(expr)
     }
     fn binary_opt(&mut self, left: Expr) -> Result<Expr, ParseError> {
-        self.advance();
+        let op = self.advance();
         let right = match self.peak().ttype {
             TokenType::Literal(_)
             | TokenType::Identifier
-            | TokenType::T
+            | TokenType::Underscore
+            | TokenType::Self_
             | TokenType::LeftSqBracket
             | TokenType::Pipe
-            | TokenType::LeftBrace => Some(Box::new(self.expr()?)),
+            | TokenType::LeftBrace
+            | TokenType::LeftParen => Some(Box::new(self.expr()?)),
+            // {
+            //     let mut expr = self.literal()?;
+            //     loop { match self.peak().ttype {
+            //         TokenType::Semicolon => expr = self.binary_opt(expr)?,
+            //         TokenType::RightArrow
+            //         | TokenType::Carrot => expr = self.binary(expr)?,
+            //         TokenType::Period => expr = self.msg_emission(expr)?,
+            //         _ => break
+            //     } println!("{}", expr.prettify());}
+            //     expr.pprint();
+            //     Some(Box::new(expr))
+            // },
             _ => None
         };
-        let expr = Expr::BinaryOpt(Box::new(left), self.previous(), right);
+        let expr = Expr::BinaryOpt(Box::new(left), op, right);
         expr.pprint();
         Ok(expr)
     }
@@ -144,7 +151,15 @@ impl Parser {
         Ok(expr)
     }
     fn msg_emission(&mut self, left: Expr) -> Result<Expr, ParseError> {
-        Ok( Expr::MsgEmission(Some(Box::new(left)), self.advance()) )
+        self.advance();
+        let msg_name = self.advance();
+        let mut arg = None;
+
+        if let TokenType::Colon = self.peak().ttype {
+            self.advance();
+            arg = Some(Box::new(self.expr()?));
+        }
+        Ok( Expr::MsgEmission(Some(Box::new(left)), msg_name, arg) )
     }
 
     fn is_at_end(&self) -> bool {

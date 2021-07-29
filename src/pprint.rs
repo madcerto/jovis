@@ -9,44 +9,54 @@ pub trait PPrint {
 impl PPrint for Expr {
     fn prettify(&self) -> String {
         match self {
-            Expr::Unary(operator, operand) =>
-                format!("( {} {} )", operator.lexeme, operand.prettify()),
             Expr::Binary(left, op, right) =>
                 format!("( {} {} {} )", op.lexeme, left.prettify(), right.prettify()),
-            Expr::MsgEmission(self_expr, msg_name) => match self_expr {
-                Some(self_expr) => format!("{} {}", self_expr.prettify(), msg_name.lexeme),
-                None => format!("{}", msg_name.lexeme),
+            Expr::MsgEmission(self_expr, msg_name, arg_opt) => {
+                let mut str;
+                match self_expr {
+                    Some(self_expr) => str = format!("{}.{}", self_expr.prettify(), msg_name.lexeme),
+                    None => str = format!("{}", msg_name.lexeme),
+                }
+                if let Some(arg) = arg_opt {
+                    str.push_str(format!(": {}", arg.prettify()).as_str())
+                }
+                str
             },
             Expr::BinaryOpt(left, op, right) => match right {
                 Some(right) => format!("( {} {} {} )", op.lexeme, left.prettify(), right.prettify()),
                 None => format!("( {} {} )", op.lexeme, left.prettify())
             },
             Expr::Object(exprs) => {
-                let mut str = "[ ".to_string();
+                let mut str = "[\n".to_string();
                 for expr in exprs {
-                    str.push_str(format!("{} ", expr.prettify()).as_str())
+                    str.push_str(format!("{}\n", expr.prettify()).as_str())
                 }
                 str.push_str("]");
                 str
             },
-            Expr::Call(func, args) => {
-                let mut str = format!("( {} ", func.prettify());
-                for arg in args {
-                    str.push_str(format!("{} ", arg.prettify()).as_str())
+            Expr::CodeBlock(exprs) => {
+                let mut str: String = "{\n".into();
+                for expr in exprs {
+                    str.push_str(format!("{}\n", expr.prettify()).as_str())
                 }
-                str.push_str(")");
+                str.push_str("}");
                 str
             },
-            Expr::CodeBlock(capture_list, exprs) => {
+            Expr::Fn(capture_list, expr) => {
                 let mut str = "| ".to_string();
                 for capture in capture_list {
                     str.push_str(format!("{} ", capture.prettify()).as_str())
                 }
-                str.push_str("| { ");
+                str.push_str("| ");
+                str.push_str(format!("{}", expr.prettify()).as_str());
+                str
+            },
+            Expr::Type(exprs) => {
+                let mut str = "t( ".to_string();
                 for expr in exprs {
                     str.push_str(format!("{} ", expr.prettify()).as_str())
                 }
-                str.push_str("}");
+                str.push_str(")");
                 str
             },
             // Expr::Identifier(name) => format!("{}", name.lexeme),

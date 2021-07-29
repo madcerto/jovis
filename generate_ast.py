@@ -66,12 +66,12 @@ if __name__ == "__main__":
 
     out_dir: str = sys.argv[1]
     define_ast(out_dir, "Expr", [
-        "Unary | Token, Expr",
         "Binary | Expr, Token, Expr",
-        "MsgEmission | Option<Box<Expr>>, Token",
+        "MsgEmission | Option<Box<Expr>>, Token, Option<Box<Expr>>",
         "BinaryOpt | Expr, Token, Option<Box<Expr>>",
         "Object | Vec<Expr>",
-        "Call | Expr, Vec<Expr>",
-        "CodeBlock | Vec<Expr>, Vec<Expr>",
+        "Fn | Vec<Expr>, Expr",
+        "CodeBlock | Vec<Expr>",
+        "Type | Vec<Expr>",
         "Literal | Literal"
     ])
