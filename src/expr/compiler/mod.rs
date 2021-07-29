@@ -7,4 +7,4 @@ use env::Environment;
 use dtype::DType;
 use super::Expr;
 
-pub use interpreter::Interpret;
+pub use type_checker::TypeCheck;

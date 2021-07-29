@@ -1,7 +1,8 @@
 use std::io::prelude::*;
 use std::io::Result;
-use expr::compiler::Interpret;
+use expr::compiler::TypeCheck;
 use expr::parser::Parser;
+use pprint::PPrint;
 use token::scanner::Scanner;
 
 mod token;
@@ -33,7 +34,9 @@ fn parse_file(path: String) -> Result<()> {
                 println!("{}", token.to_string());
             }
             let mut parser = Parser::new(tokens);
-            parser.parse().interpret_new_env();
+            let mut ast = parser.parse();
+            ast.pprint();
+            ast.check_new_env().unwrap();
         },
         Err((line, message)) => {println!("{} at {}", message, line)}
     }
