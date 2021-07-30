@@ -3,19 +3,26 @@ use std::rc::Rc;
 use crate::{expr::compiler::dtype::*, token::{Token, TokenType, literal::Literal}};
 use super::{Expr, env::Environment, interpreter::Interpret};
 pub trait TypeCheck {
-    fn check(&mut self, env: &mut Environment) -> Result<DType, ()>;
-    fn check_new_env(&mut self) -> Result<DType, ()>;
+    fn check(&mut self, env: &mut Environment) -> Result<DType, TypeError>;
+    fn check_new_env(&mut self) -> Result<DType, TypeError>;
 }
 
 impl TypeCheck for Expr {
-    fn check(&mut self, env: &mut Environment) -> Result<DType, ()> {
+    fn check(&mut self, env: &mut Environment) -> Result<DType, TypeError> {
         match self {
             Expr::Binary(left, op, right) => match op.ttype {
                 TokenType::Equal => {
                     let name  = match *left.clone() {
-                        Expr::BinaryOpt(left, Token { ttype: TokenType::Colon, lexeme:_,line:_ }, _) => match *left {
+                        Expr::BinaryOpt(left, Token { ttype: TokenType::Semicolon, lexeme:_,line:_ }, _) => match *left {
                             Expr::MsgEmission(None, name, None) => name.lexeme,
                             _ => panic!("expected identifier")
+                        },
+                        Expr::MsgEmission(_, _, arg_opt) => match *arg_opt.expect("expected declaration").clone() {
+                            Expr::BinaryOpt(left, Token { ttype: TokenType::Semicolon, lexeme:_,line:_ }, _) => match *left {
+                                Expr::MsgEmission(None, name, None) => name.lexeme,
+                                _ => panic!("expected identifier")
+                            },
+                            _ => panic!(format!("expected declaration at {}", op.to_string()))
                         },
                         _ => panic!("expected declaration")
                     }; // TODO: parse declaration data and send value and env to it for it to initialize
@@ -29,7 +36,7 @@ impl TypeCheck for Expr {
                             { Expr::Object(byte_lits.clone()) };
                             env.add_ct_msg(Msg::new(name.clone(), Rc::new(constructor), dtype, None));
                         },
-                        None => todo!(),
+                        None => {},
                     }
 
                     // add runtime msg
@@ -53,23 +60,23 @@ impl TypeCheck for Expr {
                         if let Some(arg) = arg_opt {
                             let arg_type = match &msg.arg_type {
                                 Some(arg_type) => arg_type,
-                                None => return Err(()),
+                                None => return Err(TypeError::new("argument passed when not expected".into())),
                             };
-                            if &arg.check(env)? != arg_type { return Err(()) }
+                            if &arg.check(env)? != arg_type { return Err(TypeError::new("argument is of incorrect type".into())) }
                         } else {
                             if let Some(_) = msg.arg_type {
-                                return Err(())
+                                return Err(TypeError::new("no argument passed when expected".into()))
                             }
                         }
 
                         let mut constructed_expr = msg.construct(self_opt.clone(), env, arg_opt.clone());
                         let dtype = constructed_expr.check(env)?;
-                        if dtype != msg.ret_type { return Err(()) }
+                        if dtype != msg.ret_type { return Err(TypeError::new("".into())) }
                         *self = constructed_expr;
                         return Ok(dtype)
                     }
                 }
-                Err(())
+                Err(TypeError::new(format!("object has no msg {}", msg_name.lexeme)))
             },
             Expr::BinaryOpt(left, op, right_opt) => todo!(),
             Expr::Object(exprs) => {
@@ -80,13 +87,23 @@ impl TypeCheck for Expr {
                         Expr::Binary(left, op, right) => if let TokenType::Equal = op.ttype {
                             let name  = match *left.clone() {
                                 Expr::BinaryOpt(left, op, _) => match op.ttype {
-                                    TokenType::Colon => match *left {
+                                    TokenType::Semicolon => match *left {
                                         Expr::MsgEmission(None, name, None) => name.lexeme,
                                         _ => panic!("expected identifier")
                                     },
                                     _ => panic!("expected declaration")
                                 },
-                                _ => panic!("expected declaration")
+                                Expr::MsgEmission(_, _, arg_opt) => match *arg_opt.expect("expected declaration").clone() {
+                                    Expr::BinaryOpt(left, op, _) => match op.ttype {
+                                        TokenType::Semicolon => match *left {
+                                            Expr::MsgEmission(None, name, None) => name.lexeme,
+                                            _ => panic!("expected identifier")
+                                        },
+                                        _ => panic!("expected declaration")
+                                    },
+                                    _ => panic!(format!("expected declaration at {}", op.to_string()))
+                                },
+                                _ => panic!(format!("expected declaration at {}", op.to_string()))
                             };
                             let dtype = right.check(env)?;
                             let constructor = move |self_address: Option<Box<Expr>>, env: &Environment, arg: Option<Box<Expr>>|
@@ -104,7 +121,6 @@ impl TypeCheck for Expr {
             Expr::CodeBlock(exprs) => {
                 let mut last_type = VOID;
                 for expr in exprs {
-                    println!("{:?}", expr);
                     last_type = expr.check(env)?;
                 }
                 Ok(last_type)
@@ -146,7 +162,16 @@ impl TypeCheck for Expr {
         }
     }
 
-    fn check_new_env(&mut self) -> Result<DType, ()> {
+    fn check_new_env(&mut self) -> Result<DType, TypeError> {
         self.check(&mut Environment::new())
     }
+}
+
+#[derive(Debug)]
+pub struct TypeError {
+    msg: String
+}
+
+impl TypeError {
+    pub fn new(msg: String) -> Self { Self { msg } }
 }
