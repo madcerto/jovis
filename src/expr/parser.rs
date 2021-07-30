@@ -26,12 +26,20 @@ impl Parser {
     }
 
     fn expr(&mut self) -> Result<Expr, ParseError> {
+        let mut expr = self.in_expr()?;
+        loop { match self.peak().ttype {
+            TokenType::Equal => expr = self.binary(expr, false)?,
+            _ => break
+        }}
+        expr.pprint();
+        Ok(expr)
+    }
+    fn in_expr(&mut self) -> Result<Expr, ParseError> {
         let mut expr = self.literal()?;
         loop { match self.peak().ttype {
             TokenType::Semicolon => expr = self.binary_opt(expr)?,
-            TokenType::Equal
-            | TokenType::RightArrow
-            | TokenType::Carrot => expr = self.binary(expr)?,
+            TokenType::RightArrow
+            | TokenType::Carrot => expr = self.binary(expr, true)?,
             TokenType::Period => expr = self.msg_emission(expr)?,
             _ => break
         }}
@@ -50,7 +58,7 @@ impl Parser {
 
                 if let TokenType::Colon = self.peak().ttype {
                     self.advance();
-                    arg = Some(Box::new(self.expr()?));
+                    arg = Some(Box::new(self.in_expr()?));
                 }
 
                 Ok(Expr::MsgEmission(None, tkn, arg))
@@ -125,7 +133,7 @@ impl Parser {
             | TokenType::LeftSqBracket
             | TokenType::Pipe
             | TokenType::LeftBrace
-            | TokenType::LeftParen => Some(Box::new(self.expr()?)),
+            | TokenType::LeftParen => Some(Box::new(self.in_expr()?)),
             // {
             //     let mut expr = self.literal()?;
             //     loop { match self.peak().ttype {
@@ -144,9 +152,11 @@ impl Parser {
         expr.pprint();
         Ok(expr)
     }
-    fn binary(&mut self, left: Expr) -> Result<Expr, ParseError> {
+    fn binary(&mut self, left: Expr, in_expr: bool) -> Result<Expr, ParseError> {
         self.advance();
-        let expr = Expr::Binary(Box::new(left), self.previous(), Box::new(self.expr()?));
+        let expr;
+        if in_expr { expr = Expr::Binary(Box::new(left), self.previous(), Box::new(self.in_expr()?)) }
+        else { expr = Expr::Binary(Box::new(left), self.previous(), Box::new(self.expr()?)) }
         expr.pprint();
         Ok(expr)
     }
@@ -157,7 +167,7 @@ impl Parser {
 
         if let TokenType::Colon = self.peak().ttype {
             self.advance();
-            arg = Some(Box::new(self.expr()?));
+            arg = Some(Box::new(self.in_expr()?));
         }
         Ok( Expr::MsgEmission(Some(Box::new(left)), msg_name, arg) )
     }

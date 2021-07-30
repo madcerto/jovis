@@ -7,7 +7,7 @@
 
         MyType ;= struct: [
             mut: x; I32
-            my_method; {(Self other; I32) -> I32} = ||{
+            my_method; (Self other; I32) -> I32 = ||{
                 tmp ;= x
                 x._=: other # _.x._=(_.other)
                 tmp # _.tmp
