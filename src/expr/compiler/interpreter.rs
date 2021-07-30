@@ -1,7 +1,7 @@
 use std::rc::Rc;
 
 use super::{Expr, Environment, DType, dtype::Msg};
-use crate::{token::{TokenType, literal::Literal}};
+use crate::{expr::compiler::TypeCheck, token::{TokenType, literal::Literal}};
 
 pub trait Interpret {
     fn interpret(&mut self, env: &mut Environment) -> Option<(Vec<u8>, DType)>;
@@ -28,9 +28,9 @@ impl Interpret for Expr {
                         Some((bytes, dtype)) => {
                             let mut byte_lits = vec![];
                             for byte in bytes.clone() { byte_lits.push(Expr::Literal(Literal::Byte(byte))) }
-                            let constructor = move |self_address: Expr, env: &Environment, arg: Option<Expr>|
+                            let constructor = move |self_address: Option<Box<Expr>>, env: &Environment, arg: Option<Box<Expr>>|
                             { Expr::Object(byte_lits.clone()) };
-                            env.add_ct_msg(Msg::new(name.clone(), Rc::new(constructor), dtype));
+                            env.add_ct_msg(Msg::new(name.clone(), Rc::new(constructor), dtype, None));
                         },
                         None => return None,
                     }
@@ -39,16 +39,28 @@ impl Interpret for Expr {
                 },
                 _ => panic!("unexpected binary operator")
             },
-            Expr::MsgEmission(self_expr, msg_name, arg_opt) => {
+            Expr::MsgEmission(self_opt, msg_name, arg_opt) => {
                 // TODO: check if arg matched msg's arg type
-                let self_t = match self_expr {
+                let self_t = match self_opt {
                     Some(inner) => inner.interpret(env)?.1,
                     None => env.ct_stack_type.clone(),
                 };
                 for msg in self_t.msgs {
+                    // check if arg matched msg's arg type
+                    if let Some(arg) = arg_opt {
+                        let arg_type = match &msg.arg_type {
+                            Some(arg_type) => arg_type,
+                            None => return None,
+                        };
+                        if &arg.check(env).ok()? != arg_type { return None }
+                    } else {
+                        if let Some(_) = msg.arg_type {
+                            return None
+                        }
+                    }
                     if msg.name == msg_name.lexeme {
-                        // TODO: send self_expr and arg
-                        let mut constructed_expr = msg.construct(Expr::Object(vec![]), env, None);
+                        // TODO: send self_expr
+                        let mut constructed_expr = msg.construct(self_opt.clone(), env, arg_opt.clone());
                         let (bytes, dtype) = constructed_expr.interpret(env)?;
                         if dtype != msg.ret_type { return None }
                         *self = constructed_expr;
@@ -105,9 +117,9 @@ impl Interpret for Expr {
                                     bytes.append(&mut val_bytes);
                                     let mut byte_lits = vec![];
                                     for byte in val_bytes.clone() { byte_lits.push(Expr::Literal(Literal::Byte(byte))) }
-                                    let constructor = move |self_address: Expr, env: &Environment, arg: Option<Expr>|
+                                    let constructor = move |self_address: Option<Box<Expr>>, env: &Environment, arg: Option<Box<Expr>>|
                                     { Expr::Object(byte_lits.clone()) };
-                                    msgs.push(Msg::new(name, Rc::new(constructor), dtype.clone() ));
+                                    msgs.push(Msg::new(name, Rc::new(constructor), dtype.clone(), None));
                                     size += dtype.size;
                                 },
                                 None => return None,
@@ -137,7 +149,6 @@ impl Interpret for Expr {
             },
             Expr::Fn(capture_list, expr) => todo!(),
             Expr::Type(exprs) => todo!(),
-            // Expr::Identifier(name) => env.get(name.lexeme),
             Expr::Literal(inner) => match inner.clone() {
                 Literal::String(val) => {
                     let mut bytes = vec![];

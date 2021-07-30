@@ -18,40 +18,51 @@ impl TypeCheck for Expr {
                             _ => panic!("expected identifier")
                         },
                         _ => panic!("expected declaration")
-                    };
+                    }; // TODO: parse declaration data and send value and env to it for it to initialize
                     match right.clone().interpret(env) {
                         Some((bytes, dtype)) => {
                             let mut byte_lits = vec![];
                             for byte in bytes {
                                 byte_lits.push(Expr::Literal(Literal::Byte(byte)));
                             }
-                            let constructor = move |_: Expr, _: &Environment, _: Option<Expr>|
+                            let constructor = move |_: Option<Box<Expr>>, _: &Environment, _: Option<Box<Expr>>|
                             { Expr::Object(byte_lits.clone()) };
-                            env.add_ct_msg(Msg::new(name.clone(), Rc::new(constructor), dtype));
+                            env.add_ct_msg(Msg::new(name.clone(), Rc::new(constructor), dtype, None));
                         },
                         None => todo!(),
                     }
 
                     // add runtime msg
                     let dtype = right.check(env)?;
-                    let constructor = move |_: Expr, _: &Environment, _: Option<Expr>|
+                    let constructor = move |_: Option<Box<Expr>>, _: &Environment, _: Option<Box<Expr>>|
                     { Expr::Object(vec![]) }; // TODO: return asm node
-                    env.add_rt_msg(Msg::new(name, Rc::new(constructor), dtype.clone()));
+                    env.add_rt_msg(Msg::new(name, Rc::new(constructor), dtype.clone(), None));
 
                     Ok(dtype)
                 },
                 _ => panic!("expected identifier")
             },
-            Expr::MsgEmission(self_expr, msg_name, arg_opt) => {
-                // TODO: check if arg matched msg's arg type
-                let self_t = match self_expr {
+            Expr::MsgEmission(self_opt, msg_name, arg_opt) => {
+                let self_t = match self_opt {
                     Some(inner) => inner.check(env)?,
                     None => env.rt_stack_type.clone(),
                 };
                 for msg in self_t.msgs {
                     if msg.name == msg_name.lexeme {
-                        // TODO: send self_expr and arg
-                        let mut constructed_expr = msg.construct(Expr::Object(vec![]), env, None);
+                        // check if arg matched msg's arg type
+                        if let Some(arg) = arg_opt {
+                            let arg_type = match &msg.arg_type {
+                                Some(arg_type) => arg_type,
+                                None => return Err(()),
+                            };
+                            if &arg.check(env)? != arg_type { return Err(()) }
+                        } else {
+                            if let Some(_) = msg.arg_type {
+                                return Err(())
+                            }
+                        }
+
+                        let mut constructed_expr = msg.construct(self_opt.clone(), env, arg_opt.clone());
                         let dtype = constructed_expr.check(env)?;
                         if dtype != msg.ret_type { return Err(()) }
                         *self = constructed_expr;
@@ -78,9 +89,9 @@ impl TypeCheck for Expr {
                                 _ => panic!("expected declaration")
                             };
                             let dtype = right.check(env)?;
-                            let constructor = move |self_address: Expr, env: &Environment, arg: Option<Expr>|
+                            let constructor = move |self_address: Option<Box<Expr>>, env: &Environment, arg: Option<Box<Expr>>|
                             { Expr::Object(vec![]) }; // TODO: replace with asm node
-                            msgs.push(Msg::new(name, Rc::new(constructor), dtype.clone() ));
+                            msgs.push(Msg::new(name, Rc::new(constructor), dtype.clone(), None));
                             size += dtype.size;
                         }
                         _ => {
@@ -101,6 +112,24 @@ impl TypeCheck for Expr {
             Expr::Fn(capture_list, expr) => {
                 let mut new_env = Environment::new();
                 // TODO: add capture list to new environment
+                // for expr in capture_list {
+                //     match expr {
+                //         Expr::MsgEmission(self_opt, msg_name, arg_opt) => {
+                //             // TODO: err if argument is provided
+                //             let tmp;
+                //             let self_t = match self_opt {
+                //                 Some(inner) => {tmp = inner.check(env)?; &tmp},
+                //                 None => &env.rt_stack_type,
+                //             };
+                //             let msg = match self_t.get_msg(&msg_name.lexeme) {
+                //                 Some(inner) => inner,
+                //                 None => return Err(())
+                //             };
+                //             new_env.add_rt_msg(msg);
+                //         },
+                //         _ => return Err(()) // TODO
+                //     }
+                // }
                 expr.check(&mut new_env)?;
                 Ok(I32)
             },

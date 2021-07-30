@@ -59,23 +59,32 @@ impl DType {
             Literal::Byte(_) => B8,
         }
     }
+
+    pub fn get_msg(&self, msg_name: &String) -> Option<Msg> {
+        for msg in &self.msgs {
+            if &msg.name == msg_name { return Some(msg.clone()) }
+        }
+        None
+    }
 }
 
 #[derive(Clone)]
 pub struct Msg {
     pub name: String,
-    constructor: Rc<dyn Fn(Expr, &Environment, Option<Expr>) -> Expr>,
-    pub ret_type: DType
+    constructor: Rc<dyn Fn(Option<Box<Expr>>, &Environment, Option<Box<Expr>>) -> Expr>,
+    pub ret_type: DType,
+    pub arg_type: Option<DType>
 }
 impl Msg {
     pub fn new(name: String,
-        constructor: Rc<dyn Fn(Expr, &Environment, Option<Expr>) -> Expr>,
-        ret_type: DType
+        constructor: Rc<dyn Fn(Option<Box<Expr>>, &Environment, Option<Box<Expr>>) -> Expr>,
+        ret_type: DType,
+        arg_type: Option<DType>
     ) -> Self {
-        Self { name, constructor, ret_type }
+        Self { name, constructor, ret_type, arg_type }
     }
 
-    pub fn construct(&self, self_expr: Expr, env: &Environment, arg: Option<Expr>) -> Expr {
+    pub fn construct(&self, self_expr: Option<Box<Expr>>, env: &Environment, arg: Option<Box<Expr>>) -> Expr {
         (self.constructor) (self_expr, env, arg)
     }
 }
