@@ -1,4 +1,4 @@
-use std::rc::Rc;
+use std::{fmt::{Debug, Display}, rc::Rc};
 
 use crate::{expr::compiler::dtype::*, token::{Token, TokenType, literal::Literal}};
 use super::{Expr, env::Environment, interpreter::Interpret};
@@ -54,29 +54,29 @@ impl TypeCheck for Expr {
                     Some(inner) => inner.check(env)?,
                     None => env.rt_stack_type.clone(),
                 };
-                for msg in self_t.msgs {
+                for msg in &self_t.msgs {
                     if msg.name == msg_name.lexeme {
                         // check if arg matched msg's arg type
                         if let Some(arg) = arg_opt {
                             let arg_type = match &msg.arg_type {
                                 Some(arg_type) => arg_type,
-                                None => return Err(TypeError::new("argument passed when not expected".into())),
+                                None => return Err(TypeError::new("argument passed when not expected".into(), Some(msg_name.clone()))),
                             };
-                            if &arg.check(env)? != arg_type { return Err(TypeError::new("argument is of incorrect type".into())) }
+                            if &arg.check(env)? != arg_type { return Err(TypeError::new("argument is of incorrect type".into(), Some(msg_name.clone()))) }
                         } else {
                             if let Some(_) = msg.arg_type {
-                                return Err(TypeError::new("no argument passed when expected".into()))
+                                return Err(TypeError::new("no argument passed when expected".into(), Some(msg_name.clone())))
                             }
                         }
 
                         let mut constructed_expr = msg.construct(self_opt.clone(), env, arg_opt.clone());
                         let dtype = constructed_expr.check(env)?;
-                        if dtype != msg.ret_type { return Err(TypeError::new("".into())) }
+                        if dtype != msg.ret_type { return Err(TypeError::new("msg's constructed expression's type is not the same as it's return type".into(), Some(msg_name.clone()))) }
                         *self = constructed_expr;
                         return Ok(dtype)
                     }
                 }
-                Err(TypeError::new(format!("object has no msg {}", msg_name.lexeme)))
+                Err(TypeError::new(format!("object of type {:?} has no msg {}", self_t, msg_name.lexeme), Some(msg_name.clone())))
             },
             Expr::BinaryOpt(_left, _op, _right_opt) => todo!(),
             Expr::Asm(_, _) => todo!(),
@@ -168,11 +168,24 @@ impl TypeCheck for Expr {
     }
 }
 
-#[derive(Debug)]
 pub struct TypeError {
-    msg: String
+    msg: String,
+    tkn_opt: Option<Token>
 }
 
 impl TypeError {
-    pub fn new(msg: String) -> Self { Self { msg } }
+    pub fn new(msg: String, tkn_opt: Option<Token>) -> Self { Self { msg, tkn_opt } }
+}
+impl Display for TypeError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match &self.tkn_opt {
+            Some(tkn) => write!(f, "err: {} at {}", self.msg, tkn.to_string()),
+            None => write!(f, "err: {}", self.msg)
+        }
+    }
+}
+impl Debug for TypeError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        Display::fmt(&self, f)
+    }
 }
