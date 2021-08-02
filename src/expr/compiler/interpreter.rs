@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use super::{Expr, Environment, DType, dtype::Msg};
+use super::{Expr, Environment, DType, dtype::Msg, core_lib::{STRING, str_from_jstr}};
 use crate::{expr::compiler::TypeCheck, token::{TokenType, literal::Literal}};
 
 pub trait Interpret {
@@ -155,7 +155,11 @@ impl Interpret for Expr {
                 Literal::String(val) => {
                     let mut bytes = vec![];
                     val.chars().for_each(|c|{ bytes.push(c as u8) });
-                    Some((bytes, DType::from_literal(inner.clone())))
+                    let str_size = bytes.len();
+                    let addr = env.push(bytes);
+                    let mut val = addr.to_ne_bytes().to_vec();
+                    val.extend_from_slice(&str_size.to_ne_bytes());
+                    Some((val, DType::from_literal(inner.clone())))
                 },
                 Literal::Char(c) => Some((vec![c as u8], DType::from_literal(inner.clone()))),
                 Literal::Integer(i) => {

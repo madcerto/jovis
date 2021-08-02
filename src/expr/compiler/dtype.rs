@@ -1,7 +1,7 @@
 use std::{fmt::Debug, rc::Rc};
 
 use crate::{expr::Expr, token::literal::Literal};
-use super::Environment;
+use super::{Environment, core_lib::*};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct DType {
@@ -9,50 +9,10 @@ pub struct DType {
     pub msgs: Vec<Msg>
 }
 
-pub const VOID: DType = DType {
-    size: 0,
-    msgs: vec![]
-};
-
-const B8: DType = DType {
-    size: 8,
-    msgs: vec![]
-};
-// const B16: DType = DType {
-//     size: 8,
-//     msgs: vec![]
-// };
-// const B32: DType = DType {
-//     size: 8,
-//     msgs: vec![]
-// };
-const B64: DType = DType {
-    size: 8,
-    msgs: vec![]
-};
-
-const CHAR: DType = DType {
-    size: 8,
-    msgs: vec![]
-};
-pub const I32: DType = DType {
-    size: 32,
-    msgs: vec![]
-};
-const F32: DType = DType {
-    size: 32,
-    msgs: vec![]
-};
-
 impl DType {
     pub fn from_literal(lit: Literal) -> Self {
         match lit {
-            Literal::String(_) => {
-                DType {
-                    size: 96,
-                    msgs: vec![]
-                }
-            },
+            Literal::String(_) => STRING,
             Literal::Char(_) => CHAR,
             Literal::Integer(_) => I32,
             Literal::Float(_) => F32,

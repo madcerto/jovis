@@ -1,7 +1,7 @@
 use std::{fmt::{Debug, Display}, rc::Rc};
 
-use crate::{expr::compiler::dtype::*, token::{Token, TokenType, literal::Literal}};
-use super::{Expr, env::Environment, interpreter::Interpret};
+use crate::token::{Token, TokenType, literal::Literal};
+use super::{Expr, env::Environment, interpreter::Interpret, core_lib::*, dtype::{DType, Msg}};
 pub trait TypeCheck {
     fn check(&mut self, env: &mut Environment) -> Result<DType, TypeError>;
     fn check_new_env(&mut self) -> Result<DType, TypeError>;
