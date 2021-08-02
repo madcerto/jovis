@@ -35,7 +35,7 @@ fn parse_file(path: String) -> Result<()> {
             }
             let mut parser = Parser::new(tokens);
             let mut ast = parser.parse();
-            ast.pprint();
+            // ast.pprint();
             ast.check_new_env().unwrap();
         },
         Err((line, message)) => {println!("{} at {}", message, line)}

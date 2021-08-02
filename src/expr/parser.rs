@@ -31,7 +31,6 @@ impl Parser {
             TokenType::Equal => expr = self.binary(expr, false)?,
             _ => break
         }}
-        expr.pprint();
         Ok(expr)
     }
     fn in_expr(&mut self) -> Result<Expr, ParseError> {
@@ -43,12 +42,11 @@ impl Parser {
             TokenType::Period => expr = self.msg_emission(expr)?,
             _ => break
         }}
-        expr.pprint();
         Ok(expr)
     }
     fn literal(&mut self) -> Result<Expr, ParseError> {
         let tkn = self.peak();
-        let expr = match tkn.ttype {
+        match tkn.ttype {
             TokenType::Literal(inner) => { self.advance(); Ok(Expr::Literal(inner)) },
             TokenType::Identifier
             | TokenType::Underscore
@@ -104,9 +102,7 @@ impl Parser {
             }
             TokenType::LeftParen => self.dtype(),
             _ => Err(ParseError{ tkn, msg: "Invalid expression-starting token".to_string() })
-        };
-        expr.clone()?.pprint();
-        expr
+        }
     }
     fn dtype(&mut self) -> Result<Expr, ParseError> {
         self.advance();
@@ -119,9 +115,7 @@ impl Parser {
             exprs.push(self.expr()?);
         }
         self.advance();
-        let expr  = Expr::Type(exprs);
-        expr.pprint();
-        Ok(expr)
+        Ok(Expr::Type(exprs))
     }
     fn binary_opt(&mut self, left: Expr) -> Result<Expr, ParseError> {
         let op = self.advance();
@@ -148,17 +142,14 @@ impl Parser {
             // },
             _ => None
         };
-        let expr = Expr::BinaryOpt(Box::new(left), op, right);
-        expr.pprint();
-        Ok(expr)
+        Ok(Expr::BinaryOpt(Box::new(left), op, right))
     }
     fn binary(&mut self, left: Expr, in_expr: bool) -> Result<Expr, ParseError> {
         self.advance();
         let expr;
         if in_expr { expr = Expr::Binary(Box::new(left), self.previous(), Box::new(self.in_expr()?)) }
         else { expr = Expr::Binary(Box::new(left), self.previous(), Box::new(self.expr()?)) }
-        expr.pprint();
-        Ok(expr)
+        Ok(expr) // TODO: remove use of expr variable
     }
     fn msg_emission(&mut self, left: Expr) -> Result<Expr, ParseError> {
         self.advance();
