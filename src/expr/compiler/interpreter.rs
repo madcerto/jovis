@@ -71,7 +71,7 @@ impl Interpret for Expr {
             },
             Expr::BinaryOpt(left, op, right_opt) => {
                 match op.ttype {
-                    TokenType::Colon => {
+                    TokenType::Semicolon => {
                         let name = match *left.clone() {
                             Expr::MsgEmission(None, name, None) => name.lexeme,
                             _ => panic!("expected identifier")
@@ -84,7 +84,8 @@ impl Interpret for Expr {
                                         // TODO: convert bytes to DType
                                         Some(bytes)
                                     },
-                                    None => panic!("type in declaration is not static"),
+                                    // None => panic!(format!("type in declaration is not static at {}", op.to_string())),
+                                    None => None
                                 }
                             },
                             None => None
@@ -94,6 +95,7 @@ impl Interpret for Expr {
                     _ => panic!("unexpected operator in binary_opt")
                 }
             },
+            Expr::Asm(_, code_expr) => todo!(),
             Expr::Object(exprs) => {
                 let mut bytes = vec![];
                 let mut msgs = vec![];
@@ -103,7 +105,7 @@ impl Interpret for Expr {
                         Expr::Binary(left, op, right) => if let TokenType::Equal = op.ttype {
                             let name  = match *left.clone() {
                                 Expr::BinaryOpt(left, op, _) => match op.ttype {
-                                    TokenType::Colon => match *left {
+                                    TokenType::Semicolon => match *left {
                                         Expr::MsgEmission(None, name, None) => name.lexeme,
                                         _ => panic!("expected identifier")
                                     },
@@ -147,8 +149,8 @@ impl Interpret for Expr {
                 }
                 Some((last, last_type))
             },
-            Expr::Fn(capture_list, expr) => todo!(),
-            Expr::Type(exprs) => todo!(),
+            Expr::Fn(capture_list, expr) => None,
+            Expr::Type(exprs) => None,
             Expr::Literal(inner) => match inner.clone() {
                 Literal::String(val) => {
                     let mut bytes = vec![];

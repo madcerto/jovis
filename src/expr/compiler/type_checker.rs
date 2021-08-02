@@ -79,6 +79,7 @@ impl TypeCheck for Expr {
                 Err(TypeError::new(format!("object has no msg {}", msg_name.lexeme)))
             },
             Expr::BinaryOpt(left, op, right_opt) => todo!(),
+            Expr::Asm(_, _) => todo!(),
             Expr::Object(exprs) => {
                 let mut size = 0;
                 let mut msgs = vec![];

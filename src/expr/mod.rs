@@ -9,6 +9,7 @@ pub enum Expr {
     Binary(Box<Expr>, Token, Box<Expr>),
     MsgEmission(Option<Box<Expr>>, Token, Option<Box<Expr>>),
     BinaryOpt(Box<Expr>, Token, Option<Box<Expr>>),
+    Asm(Box<Expr>, Box<Expr>),
     Object(Vec<Expr>),
     Fn(Vec<Expr>, Box<Expr>),
     CodeBlock(Vec<Expr>),

@@ -101,6 +101,7 @@ impl Parser {
                 Ok(Expr::CodeBlock(exprs))
             }
             TokenType::LeftParen => self.dtype(),
+            TokenType::Asm => self.asm(),
             _ => Err(ParseError{ tkn, msg: "Invalid expression-starting token".to_string() })
         }
     }
@@ -116,6 +117,13 @@ impl Parser {
         }
         self.advance();
         Ok(Expr::Type(exprs))
+    }
+    fn asm(&mut self) -> Result<Expr, ParseError> {
+        self.advance();
+        let asm_type = self.in_expr()?;
+        let asm_code = self.in_expr()?;
+
+        Ok(Expr::Asm(Box::new(asm_type), Box::new(asm_code)))
     }
     fn binary_opt(&mut self, left: Expr) -> Result<Expr, ParseError> {
         let op = self.advance();

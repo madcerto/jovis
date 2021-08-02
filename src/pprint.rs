@@ -26,6 +26,7 @@ impl PPrint for Expr {
                 Some(right) => format!("( {} {} {} )", op.lexeme, left.prettify(), right.prettify()),
                 None => format!("( {} {} )", op.lexeme, left.prettify())
             },
+            Expr::Asm(_, _) => todo!(),
             Expr::Object(exprs) => {
                 let mut str = "[\n".to_string();
                 for expr in exprs {
