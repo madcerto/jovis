@@ -30,7 +30,7 @@ impl Scanner {
                 let mut map = HashMap::new();
                 map.insert("_".to_string(), TokenType::Underscore);
                 map.insert("Self".to_string(), TokenType::Self_);
-                map.insert("t".to_string(), TokenType::T);
+                map.insert("asm".to_string(), TokenType::Asm);
                 map
             }
         }

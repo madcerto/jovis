@@ -46,7 +46,7 @@ pub enum TokenType {
     // Alphanumeric
     Underscore,
     Self_,
-    T,
+    Asm,
 
     // Literals
     Literal(Literal),
