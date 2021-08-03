@@ -8,6 +8,7 @@ mod token;
 mod expr;
 mod pprint;
 mod code_generator;
+mod linker;
 
 fn main() -> Result<()> {
     let args: Vec<String> = std::env::args().collect();
