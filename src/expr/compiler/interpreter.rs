@@ -1,7 +1,7 @@
 use std::rc::Rc;
 
-use super::{Expr, Environment, DType, dtype::Msg, core_lib::{STRING, str_from_jstr}};
-use crate::{expr::compiler::TypeCheck, token::{TokenType, literal::Literal}};
+use super::{Expr, Environment, DType, dtype::Msg, core_lib::{STRING, VOID, str_from_jstr}, TypeCheck};
+use crate::{expr::parser::Parser, token::{TokenType, literal::Literal, scanner::Scanner}};
 
 pub trait Interpret {
     fn interpret(&mut self, env: &mut Environment) -> Option<(Vec<u8>, DType)>;
@@ -95,7 +95,32 @@ impl Interpret for Expr {
                     _ => panic!("unexpected operator in binary_opt")
                 }
             },
-            Expr::Asm(_, code_expr) => todo!(),
+            Expr::Asm(_, code_expr) => {
+                let code = match code_expr.interpret(env) {
+                    Some((code_bytes, code_type)) => if code_type == STRING {
+                        if code_bytes.len() == STRING.size {
+                            let mut code_slice: [u8; 16] = [0; 16]; // TODO: find more efficient way to do this
+                            for i in 0..12 {
+                                code_slice[i] = code_bytes[i];
+                            }
+                            str_from_jstr(code_slice, env).expect("could not get string from stack")
+                        }
+                        else { panic!("jstr is of incorrect size") } // TODO: do these need to be reported to the user?
+                    } else { return None },
+                    None => return None
+                };
+                for (i,_) in code.match_indices("j#") {
+                    // TODO: handle scanner and parser errors
+                    let mut scanner  = Scanner::new(code.get((i+2)..).unwrap().to_string());
+                    let mut parser = Parser::new(scanner.scan_tokens_err_ignore());
+                    let mut expr = parser.parse();
+
+                    let etype = expr.interpret(env)?;
+                    // TODO: replace expression in string with generated code for expression
+                }
+                // TODO: simulate running assembly
+                todo!()
+            },
             Expr::Object(exprs) => {
                 let mut bytes = vec![];
                 let mut msgs = vec![];
@@ -119,7 +144,7 @@ impl Interpret for Expr {
                                     bytes.append(&mut val_bytes);
                                     let mut byte_lits = vec![];
                                     for byte in val_bytes.clone() { byte_lits.push(Expr::Literal(Literal::Byte(byte))) }
-                                    let constructor = move |self_address: Option<Box<Expr>>, env: &Environment, arg: Option<Box<Expr>>|
+                                    let constructor = move |_: Option<Box<Expr>>, _: &Environment, _: Option<Box<Expr>>|
                                     { Expr::Object(byte_lits.clone()) };
                                     msgs.push(Msg::new(name, Rc::new(constructor), dtype.clone(), None));
                                     size += dtype.size;
@@ -143,14 +168,16 @@ impl Interpret for Expr {
             },
             Expr::CodeBlock(exprs) => {
                 let mut last = vec![];
-                let mut last_type = DType { size: 0, msgs: vec![] };
+                let mut last_type = VOID;
                 for expr in exprs {
-                    let (last, dtype) = expr.interpret(env)?;
-                }
+                    let (bytes, dtype) = expr.interpret(env)?;
+                    last = bytes;
+                    last_type = dtype 
+                } // TODO: find more efficient way to do this
                 Some((last, last_type))
             },
-            Expr::Fn(capture_list, expr) => None,
-            Expr::Type(exprs) => None,
+            Expr::Fn(_capture_list, _expr) => None,
+            Expr::Type(_) => None,
             Expr::Literal(inner) => match inner.clone() {
                 Literal::String(val) => {
                     let mut bytes = vec![];

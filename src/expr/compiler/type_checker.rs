@@ -1,7 +1,8 @@
 use std::{fmt::{Debug, Display}, rc::Rc};
 
-use crate::token::{Token, TokenType, literal::Literal};
+use crate::{expr::parser::Parser, token::{Token, TokenType, literal::Literal, scanner::Scanner}};
 use super::{Expr, env::Environment, interpreter::Interpret, core_lib::*, dtype::{DType, Msg}};
+
 pub trait TypeCheck {
     fn check(&mut self, env: &mut Environment) -> Result<DType, TypeError>;
     fn check_new_env(&mut self) -> Result<DType, TypeError>;
@@ -26,24 +27,38 @@ impl TypeCheck for Expr {
                         },
                         _ => panic!("expected declaration")
                     }; // TODO: parse declaration data and send value and env to it for it to initialize
+
+                    let dtype = right.check(env)?;
+
                     match right.clone().interpret(env) {
-                        Some((bytes, dtype)) => {
+                        Some((bytes, ct_dtype)) => {
                             let mut byte_lits = vec![];
                             for byte in bytes {
                                 byte_lits.push(Expr::Literal(Literal::Byte(byte)));
                             }
                             let constructor = move |_: Option<Box<Expr>>, _: &Environment, _: Option<Box<Expr>>|
                             { Expr::Object(byte_lits.clone()) };
-                            env.add_ct_msg(Msg::new(name.clone(), Rc::new(constructor), dtype, None));
+                            if ct_dtype == dtype {
+                                env.add_rt_msg(Msg::new(name.clone(), Rc::new(constructor.clone()), dtype.clone(), None));
+                            } else {
+                                // add runtime msg TODO: defer code to a function
+                                let constructor = move |_: Option<Box<Expr>>, _: &Environment, _: Option<Box<Expr>>|
+                                { Expr::Object(vec![]) }; // TODO: return asm node
+                                println!("x");
+                                env.add_rt_msg(Msg::new(name.clone(), Rc::new(constructor), dtype.clone(), None));
+                                println!("{:?}", env.rt_stack_type);
+                            }
+                            env.add_ct_msg(Msg::new(name, Rc::new(constructor), ct_dtype, None));
                         },
-                        None => {},
+                        None => {
+                            // add runtime msg TODO: defer code to a function
+                            let constructor = move |_: Option<Box<Expr>>, _: &Environment, _: Option<Box<Expr>>|
+                            { Expr::Object(vec![]) }; // TODO: return asm node
+                            println!("x");
+                            env.add_rt_msg(Msg::new(name.clone(), Rc::new(constructor), dtype.clone(), None));
+                            println!("{:?}", env.rt_stack_type);
+                        },
                     }
-
-                    // add runtime msg
-                    let dtype = right.check(env)?;
-                    let constructor = move |_: Option<Box<Expr>>, _: &Environment, _: Option<Box<Expr>>|
-                    { Expr::Object(vec![]) }; // TODO: return asm node
-                    env.add_rt_msg(Msg::new(name, Rc::new(constructor), dtype.clone(), None));
 
                     Ok(dtype)
                 },
@@ -79,7 +94,31 @@ impl TypeCheck for Expr {
                 Err(TypeError::new(format!("object of type {:?} has no msg {}", self_t, msg_name.lexeme), Some(msg_name.clone())))
             },
             Expr::BinaryOpt(_left, _op, _right_opt) => todo!(),
-            Expr::Asm(_, _) => todo!(),
+            Expr::Asm(_, code_expr) => {
+                let code = match code_expr.interpret(env) { // TODO: if string literal, get string directly
+                    Some((code_bytes, code_type)) => if code_type == STRING {
+                        if code_bytes.len() == STRING.size {
+                            let mut code_slice: [u8; 16] = [0; 16]; // TODO: find more efficient way to do this
+                            for i in 0..12 {
+                                code_slice[i] = code_bytes[i];
+                            }
+                            str_from_jstr(code_slice, env).expect("could not get string from stack")
+                        }
+                        else { panic!("jstr is of incorrect size") } // TODO: do these need to be reported to the user?
+                    } else { return Err(TypeError::new("expected string".into(), None)) },
+                    None => return Err(TypeError::new("expected static expression".into(), None))
+                };
+                for (i,_) in code.match_indices("j#") {
+                    // TODO: handle scanner and parser errors
+                    let mut scanner  = Scanner::new(code.get((i+2)..).unwrap().to_string());
+                    let mut parser = Parser::new(scanner.scan_tokens_err_ignore());
+                    let mut expr = parser.parse();
+
+                    let etype = expr.check(env)?;
+                    // TODO: replace expression in string with generated code for expression
+                }
+                Ok(VOID)
+            },
             Expr::Object(exprs) => {
                 let mut size = 0;
                 let mut msgs = vec![];
@@ -107,7 +146,7 @@ impl TypeCheck for Expr {
                                 _ => panic!(format!("expected declaration at {}", op.to_string()))
                             };
                             let dtype = right.check(env)?;
-                            let constructor = move |self_address: Option<Box<Expr>>, env: &Environment, arg: Option<Box<Expr>>|
+                            let constructor = move |_self_expr: Option<Box<Expr>>, _env: &Environment, _arg: Option<Box<Expr>>|
                             { Expr::Object(vec![]) }; // TODO: replace with asm node
                             msgs.push(Msg::new(name, Rc::new(constructor), dtype.clone(), None));
                             size += dtype.size;
@@ -126,7 +165,7 @@ impl TypeCheck for Expr {
                 }
                 Ok(last_type)
             },
-            Expr::Fn(capture_list, expr) => {
+            Expr::Fn(_capture_list, expr) => {
                 let mut new_env = Environment::new();
                 // TODO: add capture list to new environment
                 // for expr in capture_list {

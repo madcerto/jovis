@@ -48,6 +48,21 @@ impl Scanner {
 
         Ok(tokens)
     }
+    pub fn scan_tokens_err_ignore(&mut self) -> Vec<Token> {
+        let mut tokens = Vec::new();
+        while !self.is_at_end() {
+            match self.scan_token() {
+                Ok(token_opt) => match token_opt {
+                    Some(token) => tokens.push(token),
+                    None => {}
+                },
+                Err(_) => {},
+            }
+        }
+        tokens.push(self.new_token(TokenType::End));
+
+        tokens
+    }
 
     fn scan_token(&mut self) -> Result<Option<Token>, (usize, String)> {
         // in jovis you might be able to remove the whole result type by passing the context
