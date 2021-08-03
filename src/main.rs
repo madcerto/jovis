@@ -2,12 +2,12 @@ use std::io::prelude::*;
 use std::io::Result;
 use expr::compiler::TypeCheck;
 use expr::parser::Parser;
-use pprint::PPrint;
 use token::scanner::Scanner;
 
 mod token;
 mod expr;
 mod pprint;
+mod code_generator;
 
 fn main() -> Result<()> {
     let args: Vec<String> = std::env::args().collect();
@@ -30,9 +30,9 @@ fn parse_file(path: String) -> Result<()> {
     let mut scanner = Scanner::new(contents);
     match scanner.scan_tokens() {
         Ok(tokens) => {
-            for token in tokens.clone() {
-                println!("{}", token.to_string());
-            }
+            // for token in tokens.clone() {
+            //     println!("{}", token.to_string());
+            // }
             let mut parser = Parser::new(tokens);
             let mut ast = parser.parse();
             // ast.pprint();

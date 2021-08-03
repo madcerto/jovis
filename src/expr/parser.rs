@@ -1,6 +1,5 @@
 use super::Expr;
 use crate::token::{Token, TokenType};
-use crate::pprint::PPrint;
 
 pub struct Parser {
     source: Vec<Token>,
