@@ -24,8 +24,15 @@ impl Environment {
     pub fn add_rt_msg(&mut self, msg: Msg) {
         self.rt_stack_type.msgs.push(msg);
     }
-    pub fn _get_stack(&self, _addr: usize) {
 
+    pub fn push(&mut self, bytes: Vec<u8>) -> usize {
+        self.stack.push(bytes);
+        let tmp = self.sp;
+        self.sp += 1;
+        tmp
+    }
+    pub fn get_stack(&self, addr: usize) -> Option<&Vec<u8>> {
+        self.stack.get(addr)
     }
 
 
