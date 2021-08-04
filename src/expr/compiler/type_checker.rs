@@ -11,66 +11,31 @@ pub trait TypeCheck {
 impl TypeCheck for Expr {
     fn check(&mut self, env: &mut Environment) -> Result<DType, TypeError> {
         match self {
-            Expr::Binary(left, op, right) => match op.ttype {
-                TokenType::Equal => {
-                    let name  = match *left.clone() {
-                        Expr::BinaryOpt(left, Token { ttype: TokenType::Semicolon, lexeme:_,line:_ }, _) => match *left {
-                            Expr::MsgEmission(None, name, None) => name.lexeme,
-                            _ => panic!("expected identifier")
-                        },
-                        Expr::MsgEmission(_, _, arg_opt) => match *arg_opt.expect("expected declaration").clone() {
-                            Expr::BinaryOpt(left, Token { ttype: TokenType::Semicolon, lexeme:_,line:_ }, _) => match *left {
-                                Expr::MsgEmission(None, name, None) => name.lexeme,
-                                _ => panic!("expected identifier")
-                            },
-                            _ => panic!(format!("expected declaration at {}", op.to_string()))
-                        },
-                        _ => panic!("expected declaration")
-                    }; // TODO: parse declaration data and send value and env to it for it to initialize
+            Expr::Binary(left, op, right) => if op.ttype == TokenType::Equal {
+                let (decl_bytes, decl_type) = match left.interpret(env) {
+                    Some(v) => v,
+                    None => return Err(TypeError::new("expected static expression".into(), Some(op.clone()))),
+                };
+                if decl_type != DECL { return Err(TypeError::new("expected declaration expression".into(), Some(op.clone()))) }
+                
+                let mut decl_slice = [0; 20]; // TODO: find more efficient way to do this
+                for i in 0..20 {
+                    decl_slice[i] = decl_bytes[i];
+                }
+                let decl = match Decl::from_bytes(decl_slice, env) {
+                    Some(v) => v,
+                    None => return Err(TypeError::new("cannot get declaration name from stack".into(), Some(op.clone()))),
+                };
 
-                    let dtype = right.check(env)?;
-
-                    match right.clone().interpret(env) {
-                        Some((bytes, ct_dtype)) => {
-                            let mut byte_lits = vec![];
-                            for byte in bytes {
-                                byte_lits.push(Expr::Literal(Literal::Byte(byte)));
-                            }
-                            let constructor = move |_: Option<Box<Expr>>, _: &Environment, _: Option<Box<Expr>>|
-                            { Expr::Object(byte_lits.clone()) };
-                            if ct_dtype == dtype {
-                                env.add_rt_msg(Msg::new(name.clone(), Rc::new(constructor.clone()), dtype.clone(), None));
-                            } else {
-                                // add runtime msg TODO: defer code to a function
-                                let constructor = move |_: Option<Box<Expr>>, _: &Environment, _: Option<Box<Expr>>|
-                                { Expr::Object(vec![]) }; // TODO: return asm node
-                                println!("x");
-                                env.add_rt_msg(Msg::new(name.clone(), Rc::new(constructor), dtype.clone(), None));
-                                println!("{:?}", env.rt_stack_type);
-                            }
-                            env.add_ct_msg(Msg::new(name, Rc::new(constructor), ct_dtype, None));
-                        },
-                        None => {
-                            // add runtime msg TODO: defer code to a function
-                            let constructor = move |_: Option<Box<Expr>>, _: &Environment, _: Option<Box<Expr>>|
-                            { Expr::Object(vec![]) }; // TODO: return asm node
-                            println!("x");
-                            env.add_rt_msg(Msg::new(name.clone(), Rc::new(constructor), dtype.clone(), None));
-                            println!("{:?}", env.rt_stack_type);
-                        },
-                    }
-
-                    Ok(dtype)
-                },
-                _ => panic!("expected identifier")
-            },
-            Expr::MsgEmission(self_opt, msg_name, arg_opt) => {
+                decl.initialize(*right.clone(), env)
+            } else { panic!("expected identifier") },
+            Expr::MsgEmission(self_opt, msg_name, arg_opt) => { // TODO
                 let self_t = match self_opt {
                     Some(inner) => inner.check(env)?,
                     None => env.rt_stack_type.clone(),
                 };
-                for msg in &self_t.msgs {
-                    if msg.name == msg_name.lexeme {
+                match self_t.get_msg(&msg_name.lexeme) {
+                    Some(msg) => {
                         // check if arg matched msg's arg type
                         if let Some(arg) = arg_opt {
                             let arg_type = match &msg.arg_type {
@@ -89,17 +54,23 @@ impl TypeCheck for Expr {
                         if dtype != msg.ret_type { return Err(TypeError::new("msg's constructed expression's type is not the same as it's return type".into(), Some(msg_name.clone()))) }
                         *self = constructed_expr;
                         return Ok(dtype)
-                    }
+                    },
+                    None => Err(TypeError::new(
+                        format!("object of type {:?} has no msg {}", self_t, msg_name.lexeme), Some(msg_name.clone())
+                    )),
                 }
-                Err(TypeError::new(format!("object of type {:?} has no msg {}", self_t, msg_name.lexeme), Some(msg_name.clone())))
             },
-            Expr::BinaryOpt(_left, _op, _right_opt) => todo!(),
-            Expr::Asm(_, code_expr) => {
+            Expr::BinaryOpt(_left, op, _right_opt) => {
+                if op.ttype == TokenType::Semicolon {
+                    Ok(DECL)
+                } else { panic!("unexpected binary_opt operator") }
+            },
+            Expr::Asm(_, code_expr) => { // TODO
                 let code = match code_expr.interpret(env) { // TODO: if string literal, get string directly
                     Some((code_bytes, code_type)) => if code_type == STRING {
                         if code_bytes.len() == STRING.size {
                             let mut code_slice: [u8; 16] = [0; 16]; // TODO: find more efficient way to do this
-                            for i in 0..12 {
+                            for i in 0..16 {
                                 code_slice[i] = code_bytes[i];
                             }
                             str_from_jstr(code_slice, env).expect("could not get string from stack")
@@ -114,17 +85,17 @@ impl TypeCheck for Expr {
                     let mut parser = Parser::new(scanner.scan_tokens_err_ignore());
                     let mut expr = parser.parse();
 
-                    let etype = expr.check(env)?;
+                    let _etype = expr.check(env)?;
                     // TODO: replace expression in string with generated code for expression
                 }
                 Ok(VOID)
             },
-            Expr::Object(exprs) => {
+            Expr::Object(exprs) => { // TODO
                 let mut size = 0;
                 let mut msgs = vec![];
                 for expr in exprs {
                     match expr {
-                        Expr::Binary(left, op, right) => if let TokenType::Equal = op.ttype {
+                        Expr::Binary(left, op, right) => if op.ttype == TokenType::Equal {
                             let name  = match *left.clone() {
                                 Expr::BinaryOpt(left, op, _) => match op.ttype {
                                     TokenType::Semicolon => match *left {
@@ -165,7 +136,7 @@ impl TypeCheck for Expr {
                 }
                 Ok(last_type)
             },
-            Expr::Fn(_capture_list, expr) => {
+            Expr::Fn(_capture_list, expr) => { // TODO
                 let mut new_env = Environment::new();
                 // TODO: add capture list to new environment
                 // for expr in capture_list {
@@ -192,11 +163,11 @@ impl TypeCheck for Expr {
             Expr::Type(exprs) => {
                 for expr in exprs {
                     let dtype = expr.check(env)?;
-                    if dtype != VOID // TODO: replace with types for type and declaration
-                    && dtype != I32
-                        { panic!("unexpected expression in type definition") }
+                    if dtype != TYPE
+                    && dtype != FN
+                        { return Err(TypeError::new("unexpected expression in type definition".into(), None)) }
                 }
-                todo!() // TODO: replace with type for type
+                Ok(TYPE)
             },
             Expr::Literal(inner) => Ok(DType::from_literal(inner.clone())),
         }
@@ -226,5 +197,63 @@ impl Display for TypeError {
 impl Debug for TypeError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         Display::fmt(&self, f)
+    }
+}
+
+pub struct Decl {
+    pub name: String,
+    pub dtype: DType
+}
+impl Decl {
+    pub fn from_bytes(bytes: [u8; 20], env: &mut Environment) -> Option<Self> {
+        let mut name_bytes = [0; 16]; // TODO: find more efficient way to do this
+        for i in 0..16 {
+            name_bytes[i] = bytes[i];
+        }
+        let name = str_from_jstr(name_bytes, env)?;
+
+        let mut type_bytes = [0; 4]; // TODO: find more efficient way to do this
+        for i in 16..20 {
+            type_bytes[i] = bytes[i];
+        }
+        let dtype = DType::from_bytes(type_bytes);
+
+        Some(Self { name, dtype })
+    }
+
+    pub fn initialize(&self, mut val: Expr, env: &mut Environment) -> Result<DType, TypeError> {
+        let dtype = val.check(env)?;
+
+        match val.interpret(env) {
+            Some((bytes, ct_dtype)) => {
+                let mut byte_lits = vec![];
+                for byte in bytes {
+                    byte_lits.push(Expr::Literal(Literal::Byte(byte)));
+                }
+                let constructor = move |_: Option<Box<Expr>>, _: &Environment, _: Option<Box<Expr>>|
+                { Expr::Object(byte_lits.clone()) };
+                if ct_dtype == dtype {
+                    env.add_rt_msg(Msg::new(self.name.clone(), Rc::new(constructor.clone()), dtype.clone(), None));
+                } else {
+                    // add runtime msg TODO: defer code to a function
+                    let constructor = move |_: Option<Box<Expr>>, _: &Environment, _: Option<Box<Expr>>|
+                    { Expr::Object(vec![]) }; // TODO: return asm node
+                    println!("x");
+                    env.add_rt_msg(Msg::new(self.name.clone(), Rc::new(constructor), dtype.clone(), None));
+                    println!("{:?}", env.rt_stack_type);
+                }
+                env.add_ct_msg(Msg::new(self.name.clone(), Rc::new(constructor), ct_dtype, None));
+            },
+            None => {
+                // add runtime msg TODO: defer code to a function
+                let constructor = move |_: Option<Box<Expr>>, _: &Environment, _: Option<Box<Expr>>|
+                { Expr::Object(vec![]) }; // TODO: return asm node
+                println!("x");
+                env.add_rt_msg(Msg::new(self.name.clone(), Rc::new(constructor), dtype.clone(), None));
+                println!("{:?}", env.rt_stack_type);
+            },
+        }
+
+        Ok(dtype)
     }
 }
