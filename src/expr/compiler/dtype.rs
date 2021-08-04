@@ -26,6 +26,11 @@ impl DType {
         }
         None
     }
+
+    pub fn from_bytes(bytes: [u8; 4]) -> Self {
+        let size = u32::from_ne_bytes(bytes) as usize;
+        Self { size, msgs: vec![] }
+    }
 }
 
 #[derive(Clone)]
