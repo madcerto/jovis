@@ -11,11 +11,11 @@ pub const B8: DType = DType {
     msgs: vec![]
 };
 // const B16: DType = DType {
-//     size: 8,
+//     size: 2,
 //     msgs: vec![]
 // };
 // const B32: DType = DType {
-//     size: 8,
+//     size: 4,
 //     msgs: vec![]
 // };
 // const B64: DType = DType {
@@ -34,8 +34,8 @@ pub fn str_from_jstr(bytes: [u8; 16], env: &mut Environment) -> Option<String> {
         addr[i] = bytes[i];
     }
     let mut size: [u8; 8] = [0; 8]; // TODO: find more efficient way to do this
-    for i in 8..16 {
-        size[i] = bytes[i];
+    for i in 0..8 {
+        size[i] = bytes[i+8];
     }
     let addr = usize::from_ne_bytes(addr);
     let size = usize::from_ne_bytes(size);
@@ -60,15 +60,23 @@ pub const I32: DType = DType {
     size: 4,
     msgs: vec![]
 };
+pub const U32: DType = DType {
+    size: 4,
+    msgs: vec![]
+};
 pub const F32: DType = DType {
     size: 4,
     msgs: vec![]
 };
 pub const TYPE: DType = DType {
-    size: 4,
+    size: 4, // stores u32 size, which will temporarily be the only thing a udt represents
     msgs: vec![]
 };
 pub const FN: DType = DType {
     size: 8,
+    msgs: vec![]
+};
+pub const DECL: DType = DType {
+    size: 20, // name as string then type
     msgs: vec![]
 };
