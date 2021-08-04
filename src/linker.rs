@@ -1,3 +1,3 @@
 extern "C" {
-    pub fn link(entry_file: *mut cty::c_char);
+    pub fn j_link(entry_file: *const cty::c_char) -> cty::c_int;
 }
