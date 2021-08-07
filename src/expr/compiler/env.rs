@@ -1,4 +1,4 @@
-use super::{DType, dtype::Msg};
+use super::{DType, dtype::Msg, core_lib};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Environment {
@@ -13,8 +13,8 @@ impl Environment {
         Self {
             stack: Vec::with_capacity(0),
             sp: 0,
-            rt_stack_type: DType {size: 0, msgs: vec![]},
-            ct_stack_type: DType {size: 0, msgs: vec![]}
+            rt_stack_type: DType::new(0, vec![], false, false),
+            ct_stack_type: core_lib::export()
         }
     }
 
@@ -23,6 +23,12 @@ impl Environment {
     }
     pub fn add_rt_msg(&mut self, msg: Msg) {
         self.rt_stack_type.msgs.push(msg);
+    }
+    pub fn add_ct_size(&mut self, size: u32) {
+        self.ct_stack_type.size += size;
+    }
+    pub fn add_rt_size(&mut self, size: u32) {
+        self.rt_stack_type.size += size;
     }
 
     pub fn push(&mut self, bytes: Vec<u8>) -> usize {

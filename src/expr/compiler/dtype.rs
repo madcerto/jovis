@@ -3,13 +3,24 @@ use std::{fmt::Debug, rc::Rc};
 use crate::{expr::Expr, token::literal::Literal};
 use super::{Environment, core_lib::*};
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug)]
 pub struct DType {
-    pub size: usize,
-    pub msgs: Vec<Msg>
+    pub size: u32,
+    pub msgs: Vec<Msg>,
+    pub size_unknown: bool,
+    pub msgs_unknown: bool
 }
 
 impl DType {
+    pub fn new(size: u32, msgs: Vec<Msg>, size_unknown: bool, msgs_unknown: bool) -> Self {
+        Self {
+            size,
+            msgs,
+            size_unknown,
+            msgs_unknown
+        }
+    }
+
     pub fn from_literal(lit: Literal) -> Self {
         match lit {
             Literal::String(_) => STRING,
@@ -19,6 +30,22 @@ impl DType {
             Literal::Byte(_) => B8,
         }
     }
+    pub fn from_bytes(bytes: [u8; 6]) -> Self {
+        let mut size_slice = [0; 4];
+        for i in 0..4 {
+            size_slice[i] = bytes[i];
+        }
+        let size = u32::from_ne_bytes(size_slice);
+        let size_unknown = bytes[4] == 1;
+        let msgs_unknown = bytes[5] == 1;
+        Self { size, msgs: vec![], size_unknown, msgs_unknown }
+    }
+    pub fn to_bytes(&self) -> Vec<u8> {
+        let mut bytes = self.size.to_ne_bytes().to_vec();
+        bytes.push(self.size_unknown as u8);
+        bytes.push(self.msgs_unknown as u8);
+        bytes
+    }
 
     pub fn get_msg(&self, msg_name: &String) -> Option<Msg> {
         for msg in &self.msgs {
@@ -27,9 +54,44 @@ impl DType {
         None
     }
 
-    pub fn from_bytes(bytes: [u8; 4]) -> Self {
-        let size = u32::from_ne_bytes(bytes) as usize;
-        Self { size, msgs: vec![] }
+    pub fn compose(&mut self, other: DType) {
+        self.size += other.size;
+        self.msgs.extend(other.msgs.into_iter());
+    }
+}
+impl PartialEq for DType {
+    // used when a value of other is trying to be used as a value of self
+    fn eq(&self, other: &Self) -> bool {
+        if self.size_unknown {
+            if other.size <= self.size {
+                return false
+            }
+        } else if other.size_unknown {
+            if self.size <= other.size {
+                return false
+            }
+        } else {
+            if self.size != other.size {
+                return  false
+            }
+        }
+
+        if self.msgs_unknown {
+            for msg in &self.msgs {
+                if other.get_msg(&msg.name) == None {
+                    return false
+                }
+            }
+        } else if other.msgs_unknown {
+            for msg in &other.msgs {
+                if self.get_msg(&msg.name) == None {
+                    return false
+                }
+            }
+        } else {
+            return self.msgs == other.msgs
+        }
+        true
     }
 }
 

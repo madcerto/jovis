@@ -1,5 +1,4 @@
-use std::rc::Rc;
-
+use std::{rc::Rc, str::FromStr};
 use super::{Expr, Environment, DType, dtype::Msg, core_lib::*, TypeCheck};
 use crate::{expr::parser::Parser, token::{Token, TokenType, literal::Literal, scanner::Scanner}};
 
@@ -60,31 +59,41 @@ impl Interpret for Expr {
                 let mut constructed_expr = msg.construct(self_opt.clone(), env, arg_opt.clone());
                 let (bytes, dtype) = constructed_expr.interpret(env)?;
                 if dtype != msg.ret_type { return None }
-                *self = constructed_expr;
+                // *self = constructed_expr; // TODO: maybe construct runtime type's msg instead
                 Some((bytes, dtype))
             },
-            Expr::BinaryOpt(left, op, right_opt) => { // TODO
+            Expr::BinaryOpt(left, op, right_opt) => {
                 match op.ttype {
                     TokenType::Semicolon => {
-                        let _name = match *left.clone() {
+                        let name = match *left.clone() {
                             Expr::MsgEmission(None, name, None) => name.lexeme,
                             _ => panic!("expected identifier")
                         };
-                        let _type_opt = match right_opt {
+                        let mut bytes = vec![];
+                        name.chars().for_each(|c|{ bytes.push(c as u8) });
+                        let str_size = bytes.len();
+                        let addr = env.push(bytes);
+                        let mut name = addr.to_ne_bytes().to_vec();
+                        name.extend_from_slice(&str_size.to_ne_bytes());
+
+                        let type_opt = match right_opt {
                             Some(right) => {
                                 match right.interpret(env) {
-                                    Some((bytes, _dtype)) => {
-                                        // TODO: check dtype
-                                        // TODO: convert bytes to DType
+                                    Some((bytes, dtype)) => {
+                                        // check dtype
+                                        if dtype != TYPE { return None }
                                         Some(bytes)
                                     },
-                                    // None => panic!(format!("type in declaration is not static at {}", op.to_string())),
                                     None => None
                                 }
                             },
                             None => None
                         };
-                        todo!() // TODO: return declaration data type
+                        let type_bytes = type_opt.unwrap_or(vec![0,0,0,0,1,1]);
+
+                        let mut decl_bytes = name;
+                        decl_bytes.extend(type_bytes.into_iter());
+                        Some((decl_bytes, DECL))
                     },
                     _ => panic!("unexpected operator in binary_opt")
                 }
@@ -92,7 +101,7 @@ impl Interpret for Expr {
             Expr::Asm(_, code_expr) => { // TODO
                 let code = match code_expr.interpret(env) {
                     Some((code_bytes, code_type)) => if code_type == STRING {
-                        if code_bytes.len() == STRING.size {
+                        if code_bytes.len() as u32 == STRING.size {
                             let mut code_slice = [0; 16]; // TODO: find more efficient way to do this
                             for i in 0..16 {
                                 code_slice[i] = code_bytes[i];
@@ -112,8 +121,16 @@ impl Interpret for Expr {
                     let _etype = expr.interpret(env)?;
                     // TODO: replace expression in string with generated code for expression
                 }
+                let mut val = vec![];
+                for (i,_) in code.match_indices("jret(") {
+                    let mut n = i+5;
+                    loop { if code.chars().nth(n)? == ')' { break }; n+=1 }
+                    let text = code.get(i..n)?;
+                    let addr = usize::from_str(text).ok()?;
+                    val = env.get_stack(addr)?.clone();
+                }
                 // TODO: simulate running assembly
-                todo!()
+                Some((val, VOID))
             },
             Expr::Object(exprs) => { // TODO
                 let mut bytes = vec![];
@@ -158,7 +175,7 @@ impl Interpret for Expr {
                         }
                     }
                 }
-                Some((bytes,  DType { size, msgs }))
+                Some((bytes,  DType::new(size, msgs, false, true))) // TODO: unknown or not?
             },
             Expr::CodeBlock(exprs) => {
                 let mut last_bytes = vec![];
@@ -180,9 +197,9 @@ impl Interpret for Expr {
                             Some(v) => v,
                             None => return None,
                         };
-                        let composing_type = if bytes.len() == TYPE.size {
-                            let mut type_slice = [0; 4]; // TODO: find more efficient way to do this
-                            for i in 0..4 {
+                        let composing_type = if bytes.len() as u32 == TYPE.size {
+                            let mut type_slice = [0; 6]; // TODO: find more efficient way to do this
+                            for i in 0..6 {
                                 type_slice[i] = bytes[i];
                             }
                             DType::from_bytes(type_slice)
@@ -207,9 +224,9 @@ impl Interpret for Expr {
                             Some(v) => v,
                             None => return None,
                         };
-                        let composing_type = if bytes.len() == TYPE.size {
-                            let mut type_slice = [0; 4]; // TODO: find more efficient way to do this
-                            for i in 0..4 {
+                        let composing_type = if bytes.len() as u32 == TYPE.size {
+                            let mut type_slice = [0; 6]; // TODO: find more efficient way to do this
+                            for i in 0..6 {
                                 type_slice[i] = bytes[i];
                             }
                             DType::from_bytes(type_slice)
