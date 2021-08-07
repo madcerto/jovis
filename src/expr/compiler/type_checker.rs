@@ -269,6 +269,7 @@ impl Decl {
                     let constructor = move |_: Option<Box<Expr>>, _: &Environment, _: Option<Box<Expr>>|
                     { Expr::Object(vec![]) }; // TODO: return asm node
                     env.add_rt_msg(Msg::new(self.name.clone(), Rc::new(constructor), dtype.clone(), None));
+                    env.add_rt_size(dtype.size);
                     println!("{:?}", env.rt_stack_type);
                 }
                 env.add_ct_msg(Msg::new(self.name.clone(), Rc::new(constructor), ct_dtype, None));
@@ -278,6 +279,7 @@ impl Decl {
                 let constructor = move |_: Option<Box<Expr>>, _: &Environment, _: Option<Box<Expr>>|
                 { Expr::Object(vec![]) }; // TODO: return asm node
                 env.add_rt_msg(Msg::new(self.name.clone(), Rc::new(constructor), dtype.clone(), None));
+                env.add_rt_size(dtype.size);
                 println!("{:?}", env.rt_stack_type);
             },
         }
