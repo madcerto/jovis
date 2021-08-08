@@ -7,7 +7,6 @@ use token::scanner::Scanner;
 mod token;
 mod expr;
 mod pprint;
-mod code_generator;
 mod linker;
 
 fn main() -> Result<()> {
