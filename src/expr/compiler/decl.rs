@@ -60,4 +60,20 @@ impl Decl {
 
         Ok(dtype)
     }
+    pub fn ct_initialize(&self, mut val: Expr, env: &mut Environment) -> Option<(Vec<u8>, DType)> {
+        let dtype = val.check(env).ok()?;
+        println!("{:?} {:?}", self.dtype, dtype);
+        if self.dtype != dtype { return None }
+
+        let (bytes, ct_dtype) = val.interpret(env)?;
+        let mut byte_lits = vec![];
+        for byte in bytes.clone() {
+            byte_lits.push(Expr::Literal(Literal::Byte(byte)));
+        }
+        let constructor = move |_: Option<Box<Expr>>, _: &Environment, _: Option<Box<Expr>>|
+        { Expr::Object(byte_lits.clone()) };
+        env.add_ct_msg(Msg::new(self.name.clone(), Rc::new(constructor), ct_dtype, None));
+
+        Some((bytes, dtype))
+    }
 }

@@ -26,21 +26,7 @@ impl Interpret for Expr {
                     None => return None,
                 };
                 
-                let name  = decl.name;
-                let val = right.interpret(env);
-                match val.clone() {
-                    Some((bytes, dtype)) => {
-                        let mut byte_lits = vec![];
-                        for byte in bytes.clone() { byte_lits.push(Expr::Literal(Literal::Byte(byte))) }
-                        let constructor = move |_: Option<Box<Expr>>, _: &Environment, _: Option<Box<Expr>>|
-                        { Expr::Object(byte_lits.clone()) };
-                        env.add_ct_msg(Msg::new(name.clone(), Rc::new(constructor), dtype, None));
-                    },
-                    None => return None,
-                }
-
-                // val
-                todo!()
+                decl.ct_initialize(*right.clone(), env)
             } else { panic!("unexpected binary operator") },
             Expr::MsgEmission(self_opt, msg_name, arg_opt) => { // TODO
                 let self_t = match self_opt {
