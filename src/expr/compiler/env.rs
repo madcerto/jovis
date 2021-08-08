@@ -24,7 +24,7 @@ impl Environment {
     pub fn add_rt_msg(&mut self, msg: Msg) {
         self.rt_stack_type.msgs.push(msg);
     }
-    pub fn add_ct_size(&mut self, size: u32) {
+    pub fn _add_ct_size(&mut self, size: u32) {
         self.ct_stack_type.size += size;
     }
     pub fn add_rt_size(&mut self, size: u32) {

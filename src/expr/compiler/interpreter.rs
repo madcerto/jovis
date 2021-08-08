@@ -1,5 +1,5 @@
 use std::{rc::Rc, str::FromStr};
-use super::{Expr, Environment, DType, dtype::Msg, core_lib::*, TypeCheck};
+use super::{Expr, Environment, DType, dtype::Msg, core_lib::*, TypeCheck, decl::Decl};
 use crate::{expr::parser::Parser, token::{Token, TokenType, literal::Literal, scanner::Scanner}};
 
 pub trait Interpret {
@@ -10,34 +10,38 @@ pub trait Interpret {
 impl Interpret for Expr {
     fn interpret(&mut self, env: &mut Environment) -> Option<(Vec<u8>, DType)> {
         match self {
-            Expr::Binary(left, op, right) => match op.ttype { // TODO
-                TokenType::Equal => {
-                    let name  = match *left.clone() {
-                        Expr::BinaryOpt(left, op, _) => match op.ttype {
-                            TokenType::Colon => match *left {
-                                Expr::MsgEmission(None, name, None) => name.lexeme,
-                                _ => panic!("expected identifier")
-                            },
-                            _ => panic!("expected declaration")
-                        },
-                        _ => panic!("expected declaration")
-                    };
-                    let val = right.interpret(env);
-                    match val.clone() {
-                        Some((bytes, dtype)) => {
-                            let mut byte_lits = vec![];
-                            for byte in bytes.clone() { byte_lits.push(Expr::Literal(Literal::Byte(byte))) }
-                            let constructor = move |_: Option<Box<Expr>>, _: &Environment, _: Option<Box<Expr>>|
-                            { Expr::Object(byte_lits.clone()) };
-                            env.add_ct_msg(Msg::new(name.clone(), Rc::new(constructor), dtype, None));
-                        },
-                        None => return None,
-                    }
+            Expr::Binary(left, op, right) => if op.ttype == TokenType::Equal { // TODO
+                let (decl_bytes, decl_type) = match left.interpret(env) {
+                    Some(v) => v,
+                    None => return None,
+                };
+                if decl_type != DECL { return None }
+                
+                let mut decl_slice = [0; 22]; // TODO: find more efficient way to do this
+                for i in 0..22 {
+                    decl_slice[i] = decl_bytes[i];
+                }
+                let decl = match Decl::from_bytes(decl_slice, env) {
+                    Some(v) => v,
+                    None => return None,
+                };
+                
+                let name  = decl.name;
+                let val = right.interpret(env);
+                match val.clone() {
+                    Some((bytes, dtype)) => {
+                        let mut byte_lits = vec![];
+                        for byte in bytes.clone() { byte_lits.push(Expr::Literal(Literal::Byte(byte))) }
+                        let constructor = move |_: Option<Box<Expr>>, _: &Environment, _: Option<Box<Expr>>|
+                        { Expr::Object(byte_lits.clone()) };
+                        env.add_ct_msg(Msg::new(name.clone(), Rc::new(constructor), dtype, None));
+                    },
+                    None => return None,
+                }
 
-                    val
-                },
-                _ => panic!("unexpected binary operator")
-            },
+                // val
+                todo!()
+            } else { panic!("unexpected binary operator") },
             Expr::MsgEmission(self_opt, msg_name, arg_opt) => { // TODO
                 let self_t = match self_opt {
                     Some(inner) => inner.interpret(env)?.1,
@@ -179,11 +183,11 @@ impl Interpret for Expr {
             },
             Expr::CodeBlock(exprs) => {
                 let mut last_bytes = vec![];
-                let mut last_type = VOID;
+                let mut last_type = DType::new(0, vec![], false, true);
                 for expr in exprs {
                     let (bytes, dtype) = expr.interpret(env)?;
                     last_bytes = bytes;
-                    last_type = dtype 
+                    last_type = dtype;
                 }
                 Some((last_bytes, last_type))
             },
