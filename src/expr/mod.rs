@@ -1,6 +1,5 @@
 pub mod compiler;
 pub mod parser;
-mod asm_type;
 
 use super::token::{Token, literal::Literal};
 use std::fmt::Debug;

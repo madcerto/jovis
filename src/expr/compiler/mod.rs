@@ -4,6 +4,7 @@ mod interpreter;
 mod type_checker;
 mod decl;
 mod code_generator;
+mod asm_type;
 pub mod core_lib;
 
 use env::Environment;
