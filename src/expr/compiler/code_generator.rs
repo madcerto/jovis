@@ -79,7 +79,7 @@ impl CodeGenerator {
                 // issue since they're usually pretty small, but still would probably be best
                 // to have some sort of caching for this, maybe just give in and make a new data structure
                 // handle embedded jovis expressions
-                for (i,_) in text.match_indices("j#") {
+                for (i,_) in text.clone().match_indices("j#") {
                     let mut scanner  = Scanner::new(text.get((i+2)..).unwrap().to_string());
                     let (tokens, n) = scanner.scan_tokens_err_ignore();
                     let mut parser = Parser::new(tokens);
@@ -94,12 +94,12 @@ impl CodeGenerator {
                         { break }
                         line_start -= 1;
                     }
-                    let preceeding_text = text.get(0..line_start).unwrap();
+                    let preceeding_text = text.get(0..line_start).unwrap().to_string();
                     text.replace_range(0..line_start, "");
                     self.cur_code.asm.append(&mut preceeding_text.as_bytes().to_vec());
                     // generate code from checked expr
                     let register = self.get_available_reg(&reg_opt);
-                    self.gen_nasm(expr, env, Some(register));
+                    self.gen_nasm(expr, env, Some(register.clone()));
                     // replace expression in text with register
                     text.replace_range(i..n, register.to_str(NASMRegSize::L32).as_str());
                 }
