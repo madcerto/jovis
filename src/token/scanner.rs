@@ -48,7 +48,7 @@ impl Scanner {
 
         Ok(tokens)
     }
-    pub fn scan_tokens_err_ignore(&mut self) -> Vec<Token> {
+    pub fn scan_tokens_err_ignore(&mut self) -> (Vec<Token>, usize) {
         let mut tokens = Vec::new();
         while !self.is_at_end() {
             match self.scan_token() {
@@ -61,7 +61,7 @@ impl Scanner {
         }
         tokens.push(self.new_token(TokenType::End));
 
-        tokens
+        (tokens, self.start)
     }
 
     fn scan_token(&mut self) -> Result<Option<Token>, (usize, String)> {

@@ -21,7 +21,7 @@ pub enum NASMRegSize {
     L64
 }
 impl NASMRegBase {
-    pub fn to_str(self, size: NASMRegSize) -> String {
+    pub fn to_str(&self, size: NASMRegSize) -> String {
         let base = match self {
             Self::A => "a",
             Self::B => "b",
