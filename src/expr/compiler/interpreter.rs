@@ -88,36 +88,43 @@ impl Interpret for Expr {
                     _ => panic!("unexpected operator in binary_opt")
                 }
             },
-            Expr::Asm(_, code_expr) => { // TODO
-                let code = match code_expr.interpret(env) {
-                    Some((code_bytes, code_type)) => if code_type == STRING {
-                        if code_bytes.len() as u32 == STRING.size {
-                            let mut code_slice = [0; 16]; // TODO: find more efficient way to do this
+            Expr::Asm(_, text_expr) => { // TODO
+                let mut text = match text_expr.interpret(env) { // TODO: if string literal, get string directly
+                    Some((text_bytes, text_type)) => if text_type == STRING {
+                        if text_bytes.len() as u32 == STRING.size {
+                            let mut text_slice = [0; 16]; // TODO: find more efficient way to do this
                             for i in 0..16 {
-                                code_slice[i] = code_bytes[i];
+                                text_slice[i] = text_bytes[i];
                             }
-                            str_from_jstr(code_slice, env).expect("could not get string from stack")
+                            str_from_jstr(text_slice, env).expect("could not get string from stack")
                         }
-                        else { panic!("jstr is of incorrect size") } // TODO: do these need to be reported to the user?
+                        else { panic!("jstr is of incorrect size") }
                     } else { return None },
                     None => return None
                 };
-                for (i,_) in code.match_indices("j#") {
-                    // TODO: handle scanner and parser errors
-                    let mut scanner  = Scanner::new(code.get((i+2)..).unwrap().to_string());
-                    let mut parser = Parser::new(scanner.scan_tokens_err_ignore());
-                    let mut expr = parser.parse();
+                // TODO
+                // for (i,_) in text.match_indices("j#") {
+                //     // TODO: handle scanner and parser errors
+                //     let mut scanner  = Scanner::new(text.get((i+2)..).unwrap().to_string());
+                //     let mut parser = Parser::new(scanner.scan_tokens_err_ignore());
+                //     let mut expr = parser.parse();
 
-                    let _etype = expr.interpret(env)?;
-                    // TODO: replace expression in string with generated code for expression
-                }
+                //     let _etype = expr.interpret(env)?;
+                //     // TODO: replace expression in string with generated code for expression
+                // }
                 let mut val = vec![];
-                for (i,_) in code.match_indices("jret(") {
+                for (i,_) in text.clone().match_indices("jret(") {
                     let mut n = i+5;
-                    loop { if code.chars().nth(n)? == ')' { break }; n+=1 }
-                    let text = code.get(i..n)?;
-                    let addr = usize::from_str(text).ok()?;
+                    let mut operand = "".to_string();
+                    loop {
+                        let c = text.chars().nth(n)?;
+                        if c == ')' { break };
+                        operand.push(c); n+=1
+                    }
+                    let addr = usize::from_str(operand.trim()).ok()?;
                     val = env.get_stack(addr)?.clone();
+                    // remove return from text
+                    text.replace_range(i..(n+1), "");
                 }
                 // TODO: simulate running assembly
                 Some((val, VOID))
