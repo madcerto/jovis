@@ -65,7 +65,7 @@ impl TypeCheck for Expr {
                 } else { panic!("unexpected binary_opt operator") }
             },
             Expr::Asm(_, text_expr) => {
-                let mut text = match text_expr.interpret(env) { // TODO: if string literal, get string directly
+                let text = match text_expr.interpret(env) { // TODO: if string literal, get string directly
                     Some((text_bytes, text_type)) => if text_type == STRING {
                         if text_bytes.len() as u32 == STRING.size {
                             let mut text_slice: [u8; 16] = [0; 16]; // TODO: find more efficient way to do this
@@ -105,37 +105,35 @@ impl TypeCheck for Expr {
                 }
                 Ok(DType::new(0, vec![], true, true))
             },
-            Expr::Object(exprs) => { // TODO
+            Expr::Object(exprs) => { // TODO msg body
                 let mut size = 0;
                 let mut msgs = vec![];
                 for expr in exprs {
                     match expr {
                         Expr::Binary(left, op, right) => if op.ttype == TokenType::Equal {
-                            let name  = match *left.clone() {
-                                Expr::BinaryOpt(left, op, _) => match op.ttype {
-                                    TokenType::Semicolon => match *left {
-                                        Expr::MsgEmission(None, name, None) => name.lexeme,
-                                        _ => panic!("expected identifier")
-                                    },
-                                    _ => panic!("expected declaration")
-                                },
-                                Expr::MsgEmission(_, _, arg_opt) => match *arg_opt.expect("expected declaration").clone() {
-                                    Expr::BinaryOpt(left, op, _) => match op.ttype {
-                                        TokenType::Semicolon => match *left {
-                                            Expr::MsgEmission(None, name, None) => name.lexeme,
-                                            _ => panic!("expected identifier")
-                                        },
-                                        _ => panic!("expected declaration")
-                                    },
-                                    _ => panic!(format!("expected declaration at {}", op.to_string()))
-                                },
-                                _ => panic!(format!("expected declaration at {}", op.to_string()))
+                            let (decl_bytes, decl_type) = match left.interpret(env) {
+                                Some(v) => v,
+                                None => return Err(TypeError::new("expected static expression".into(), Some(op.clone()))),
                             };
-                            let dtype = right.check(env)?;
+                            if decl_type != DECL { return Err(TypeError::new("expected declaration expression".into(), Some(op.clone()))) }
+                            
+                            let mut decl_slice = [0; 22]; // TODO: find more efficient way to do this
+                            for i in 0..22 {
+                                decl_slice[i] = decl_bytes[i];
+                            }
+                            let decl = match Decl::from_bytes(decl_slice, env) {
+                                Some(v) => v,
+                                None => return Err(TypeError::new("cannot get declaration name from stack".into(), Some(op.clone()))),
+                            };
+                            let name  = decl.name;
+                            let dtype = decl.dtype;
+                            if right.check(env)? != dtype {
+                                return Err(TypeError::new("value does not match declaration".into(), None));
+                            }
                             let constructor = move |_self_expr: Option<Box<Expr>>, _env: &Environment, _arg: Option<Box<Expr>>|
-                            { Expr::Object(vec![]) }; // TODO: replace with asm node
-                            msgs.push(Msg::new(name, Rc::new(constructor), dtype.clone(), None));
+                            { Expr::Object(vec![]) }; // TODO: replace with asm node, use size for offset
                             size += dtype.size;
+                            msgs.push(Msg::new(name, Rc::new(constructor), dtype.clone(), None));
                         }
                         _ => {
                             size += expr.check(env)?.size;
