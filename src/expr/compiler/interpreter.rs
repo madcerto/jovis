@@ -1,6 +1,6 @@
 use std::{rc::Rc, str::FromStr};
 use super::{Expr, Environment, DType, dtype::Msg, core_lib::*, TypeCheck, decl::Decl};
-use crate::{expr::parser::Parser, token::{Token, TokenType, literal::Literal, scanner::Scanner}};
+use crate::{token::{Token, TokenType, literal::Literal}};
 
 pub trait Interpret {
     fn interpret(&mut self, env: &mut Environment) -> Option<(Vec<u8>, DType)>;
