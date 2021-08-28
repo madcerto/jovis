@@ -1,6 +1,6 @@
 use std::ffi::CString;
 use crate::{expr::parser::Parser, linker::j_link, token::{literal::Literal, scanner::Scanner}};
-use super::{Expr, TypeCheck, interpreter::Interpret, asm_type::{AsmLanguage, AsmTarget, NASMRegSize, NASMRegBase}, Environment, core_lib::*};
+use super::{Expr, asm_type::{AsmLanguage, AsmTarget, NASMRegSize, NASMRegBase}, Environment};
 
 pub struct CodeGenerator {
     code_vec: Vec<Code>,
@@ -52,9 +52,9 @@ impl CodeGenerator {
         // }
     }
 
-    pub fn gen_nasm(&mut self, mut ast: Expr, env: &mut Environment, reg_opt: Option<NASMRegBase>) -> bool { // TODO
+    pub fn gen_nasm(&mut self, ast: Expr, env: &mut Environment, reg_opt: Option<NASMRegBase>) -> bool { // TODO
         match ast {
-            Expr::Binary(_, _, right) => {
+            Expr::Binary(_, _, right) => { // 1 TODO
                 let register = match reg_opt {
                     Some(register) => register,
                     None => self.available_regs[0].clone(),
@@ -69,20 +69,11 @@ impl CodeGenerator {
             },
             Expr::MsgEmission(_, _, _) => panic!("unexpected msg emission in checked ast"),
             Expr::BinaryOpt(_, _, _) => todo!(), // leave as todo for a while because mostly unnecessary
-            Expr::Asm(_asm_type, mut text_expr) => {
+            Expr::Asm(_asm_type, text_expr) => { // 2 TODO
                 // TODO: handle different assembly types
-                let mut text = match text_expr.interpret(env) { // TODO: if string literal, get string directly
-                    Some((text_bytes, text_type)) => if text_type == STRING {
-                        if text_bytes.len() as u32 == STRING.size {
-                            let mut text_slice: [u8; 16] = [0; 16]; // TODO: find more efficient way to do this
-                            for i in 0..16 {
-                                text_slice[i] = text_bytes[i];
-                            }
-                            str_from_jstr(text_slice, env).expect("could not get string from stack")
-                        }
-                        else { panic!("jstr is of incorrect size") }
-                    } else { panic!("expected string") },
-                    None => panic!("expected static expression")
+                let mut text = match *text_expr {
+                    Expr::Literal(Literal::String(string)) => string,
+                    _ => panic!("checked asm node does not have string literal as text")
                 };
 
                 // handle return expressions
@@ -121,43 +112,39 @@ impl CodeGenerator {
                 }
 
                 // TODO: we're forced to run the scanner and parser twice, which might not be an
-                // issue since they're usually pretty small, but still would probably be best
+                // issue since expressions are usually pretty small, but still would probably be best
                 // to have some sort of caching for this, maybe just give in and make a new data structure.
                 // handle embedded jovis expressions
-                // for (i,_) in text.clone().match_indices("j#") {
-                //     let mut scanner  = Scanner::new(text.get((i+2)..).unwrap().to_string());
-                //     let (tokens, n) = scanner.scan_tokens_err_ignore();
-                //     let mut parser = Parser::new(tokens);
-                //     let mut expr = parser.parse();
-                //     expr.check(env).unwrap();
+                for (i,_) in text.clone().match_indices("j#") {
+                    let mut scanner  = Scanner::new(text.get((i+2)..).unwrap().to_string());
+                    let (tokens, n) = scanner.scan_tokens_err_ignore();
+                    let mut parser = Parser::new(tokens);
+                    let expr = parser.parse();
 
-                //     // get last semicolon before jovis expression, and push everything before that into cur_code
-                //     let mut line_start = i;
-                //     loop {
-                //         if line_start == 0
-                //         || text.get(line_start..(line_start+1)).unwrap() == ";"
-                //         { break }
-                //         line_start -= 1;
-                //     }
-                //     let preceeding_text = text.get(0..line_start).unwrap().to_string();
-                //     text.replace_range(0..line_start, "");
-                //     self.cur_code.asm.append(&mut preceeding_text.as_bytes().to_vec());
-                //     // generate code from checked expr
-                //     let register = self.get_available_reg(&reg_opt);
-                //     self.gen_nasm(expr, env, Some(register.clone()));
-                //     // replace expression in text with register
-                //     text.replace_range(i..n, register.to_str(NASMRegSize::L32).as_str());
-                //     self.available_regs.push(register);
-                // }
+                    // get last semicolon before jovis expression, and push everything before that into cur_code
+                    let mut line_start = i;
+                    loop {
+                        if line_start == 0
+                        || text.get(line_start..(line_start+1)).unwrap() == ";"
+                        { break }
+                        line_start -= 1;
+                    }
+                    let preceeding_text = text.get(0..line_start).unwrap().to_string();
+                    text.replace_range(0..line_start, "");
+                    self.cur_code.asm.append(&mut preceeding_text.as_bytes().to_vec());
+                    // generate code from checked expr
+                    let register = self.get_available_reg(&reg_opt);
+                    self.gen_nasm(expr, env, Some(register.clone()));
+                    // replace expression in text with register
+                    text.replace_range(i..n, register.to_str(NASMRegSize::L32).as_str());
+                    self.available_regs.push(register);
+                }
 
                 // add text to current code object
                 self.cur_code.asm.append(&mut text.as_bytes().to_vec());
                 return is_ptr
             },
             Expr::Object(exprs) => if let Some(register) = &reg_opt {
-                // TODO: while adding code gen for inner expressions,
-                // they may add stuff onto the stack in between the object's data
-                // probably just create a new stack for every expression
                 let val_reg = self.pop_available_reg(&reg_opt);
                 self.available_regs.retain(|x| x != register );
                 let mut addr_save = format!("mov {}, rsp;", register.to_str(NASMRegSize::L64)).as_bytes().to_vec();
@@ -175,7 +162,7 @@ impl CodeGenerator {
                 self.available_regs.push(register.clone());
                 true
             } else { false },
-            Expr::Fn(_capture_list, expr) => {
+            Expr::Fn(_capture_list, expr) => { // 2 TODO
                 let mut prev_code = self.cur_code.clone();
                 let prev_regs = self.available_regs.clone();
                 self.available_regs = vec![
@@ -207,7 +194,7 @@ impl CodeGenerator {
                 self.available_regs = prev_regs;
                 false
             },
-            Expr::CodeBlock(mut exprs) => {
+            Expr::CodeBlock(mut exprs) => { // TODO new stack frame
                 // TODO: once type checker has nested environments, store stack frame
                 match exprs.pop() {
                     Some(last_expr) => {
@@ -221,7 +208,7 @@ impl CodeGenerator {
                 }
             },
             Expr::Type(_) => todo!(), // leave as todo for a while because mostly unnecessary
-            Expr::Literal(lit) => if let Some(register) = reg_opt {
+            Expr::Literal(lit) => if let Some(register) = reg_opt { // TODO String
                 match lit {
                     Literal::String(_s) => {
                         let mut code = "/* string placeholder */".as_bytes().to_vec();

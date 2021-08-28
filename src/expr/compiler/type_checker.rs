@@ -1,10 +1,11 @@
 use std::{fmt::{Debug, Display}, rc::Rc};
-use crate::{expr::parser::Parser, token::{Token, TokenType, scanner::Scanner}};
+use crate::{expr::parser::Parser, pprint::PPrint, token::{Token, TokenType, literal::Literal, scanner::Scanner}};
 use super::{Expr, env::Environment, interpreter::Interpret, core_lib::*, dtype::{DType, Msg}, decl::Decl};
 
 pub trait TypeCheck {
     fn check(&mut self, env: &mut Environment) -> Result<DType, TypeError>;
     fn check_new_env(&mut self) -> Result<DType, TypeError>;
+    fn to_syntax(&self) -> String;
 }
 
 impl TypeCheck for Expr {
@@ -17,10 +18,8 @@ impl TypeCheck for Expr {
                 };
                 if decl_type != DECL { return Err(TypeError::new("expected declaration expression".into(), Some(op.clone()))) }
                 
-                let mut decl_slice = [0; 22]; // TODO: find more efficient way to do this
-                for i in 0..22 {
-                    decl_slice[i] = decl_bytes[i];
-                }
+                let mut decl_slice = [0; 22];
+                fill_slice_with_vec(&mut decl_slice, decl_bytes);
                 let decl = match Decl::from_bytes(decl_slice, env) {
                     Some(v) => v,
                     None => return Err(TypeError::new("cannot get declaration name from stack".into(), Some(op.clone()))),
@@ -31,7 +30,7 @@ impl TypeCheck for Expr {
             Expr::MsgEmission(self_opt, msg_name, arg_opt) => {
                 let self_t = match self_opt {
                     Some(inner) => inner.check(env)?,
-                    None => env.rt_stack_type.clone(),
+                    None => env.get_rt_stack_type(),
                 };
                 match self_t.get_msg(&msg_name.lexeme) {
                     Some(msg) => {
@@ -65,26 +64,29 @@ impl TypeCheck for Expr {
                 } else { panic!("unexpected binary_opt operator") }
             },
             Expr::Asm(_, text_expr) => {
-                let text = match text_expr.interpret(env) { // TODO: if string literal, get string directly
-                    Some((text_bytes, text_type)) => if text_type == STRING {
-                        if text_bytes.len() as u32 == STRING.size {
-                            let mut text_slice: [u8; 16] = [0; 16]; // TODO: find more efficient way to do this
-                            for i in 0..16 {
-                                text_slice[i] = text_bytes[i];
+                let mut text = match *text_expr.clone() {
+                    Expr::Literal(Literal::String(string)) => string,
+                    _ => match text_expr.interpret(env) { // TODO: if string literal, get string directly
+                        Some((text_bytes, text_type)) => if text_type == STRING {
+                            if text_bytes.len() as u32 == STRING.size {
+                                let mut text_slice: [u8; 16] = [0; 16];
+                                fill_slice_with_vec(&mut text_slice, text_bytes);
+                                str_from_jstr(text_slice, env).expect("could not get string from stack")
                             }
-                            str_from_jstr(text_slice, env).expect("could not get string from stack")
-                        }
-                        else { panic!("jstr is of incorrect size") }
-                    } else { return Err(TypeError::new("expected string".into(), None)) },
-                    None => return Err(TypeError::new("expected static expression".into(), None))
+                            else { panic!("jstr is of incorrect size") }
+                        } else { return Err(TypeError::new("expected string".into(), None)) },
+                        None => return Err(TypeError::new("expected static expression".into(), None))
+                    }
                 };
                 // check embedded jovis expressions
-                for (i,_) in text.match_indices("j#") {
+                for (i,_) in text.clone().match_indices("j#") {
                     let mut scanner  = Scanner::new(text.get((i+2)..).unwrap().to_string());
-                    let mut parser = Parser::new(scanner.scan_tokens_err_ignore().0);
+                    let (tokens, n) = scanner.scan_tokens_err_ignore();
+                    let mut parser = Parser::new(tokens);
                     let mut expr = parser.parse();
 
                     expr.check(env)?;
+                    text.replace_range((i+2)..n, expr.to_syntax().as_str());
                 }
                 // check return expressions
                 for (i,_) in text.clone().match_indices("jret#") {
@@ -103,6 +105,9 @@ impl TypeCheck for Expr {
                         n += 1;
                     }
                 }
+                
+                **text_expr = Expr::Literal(Literal::String(text));
+
                 Ok(DType::new(0, vec![], true, true))
             },
             Expr::Object(exprs) => { // TODO msg body
@@ -117,10 +122,8 @@ impl TypeCheck for Expr {
                             };
                             if decl_type != DECL { return Err(TypeError::new("expected declaration expression".into(), Some(op.clone()))) }
                             
-                            let mut decl_slice = [0; 22]; // TODO: find more efficient way to do this
-                            for i in 0..22 {
-                                decl_slice[i] = decl_bytes[i];
-                            }
+                            let mut decl_slice = [0; 22];
+                            fill_slice_with_vec(&mut decl_slice, decl_bytes);
                             let decl = match Decl::from_bytes(decl_slice, env) {
                                 Some(v) => v,
                                 None => return Err(TypeError::new("cannot get declaration name from stack".into(), Some(op.clone()))),
@@ -149,7 +152,7 @@ impl TypeCheck for Expr {
                 }
                 Ok(last_type)
             },
-            Expr::Fn(capture_list, expr) => { // TODO
+            Expr::Fn(capture_list, expr) => { // TODO: capture list stuff
                 let mut new_env = Environment::new();
                 // add capture list to new environment
                 for expr in capture_list {
@@ -159,17 +162,17 @@ impl TypeCheck for Expr {
                             match arg_opt {
                                 Some(_) => {
                                     let dtype = expr.check(env)?;
-                                    new_env.rt_stack_type.compose(dtype);
+                                    // new_env.rt_stack_type.compose(dtype); TODO: idk what this does plz fix later
                                 },
                                 None => {
                                     let tmp;
                                     let self_t = match self_opt {
-                                        Some(inner) => {tmp = inner.check(env)?; &tmp},
-                                        None => &env.rt_stack_type,
+                                        Some(inner) => {tmp = inner.check(env)?; tmp},
+                                        None => env.get_rt_stack_type(),// TODO: this used to make both be references, was that for a reason?
                                     };
                                     let msg = match self_t.get_msg(&msg_name.lexeme) {
                                         Some(inner) => inner,
-                                        None => return Err(TypeError::new("".into(), Some(msg_name.clone())))
+                                        None => return Err(TypeError::new("unexpected message".into(), Some(msg_name.clone())))
                                     };
                                     // TODO: transform all references to stack base to reference a stack value
                                     // which stores old stack base
@@ -179,7 +182,7 @@ impl TypeCheck for Expr {
                         },
                         _ => {
                             let dtype = expr.check(env)?;
-                            new_env.rt_stack_type.compose(dtype);
+                            // new_env.rt_stack_type.compose(dtype); TODO: don't know what this is either
                         } // TODO
                     }
                 }
@@ -202,6 +205,76 @@ impl TypeCheck for Expr {
     fn check_new_env(&mut self) -> Result<DType, TypeError> {
         self.check(&mut Environment::new())
     }
+
+    fn to_syntax(&self) -> String {
+        match self {
+            Expr::Binary(left, op, right) => {
+                let mut str = left.to_syntax();
+                str.push_str(&op.lexeme);
+                str.push_str(right.to_syntax().as_str());
+                str
+            },
+            Expr::MsgEmission(_, _, _) => panic!("unexpected msg emission in checked ast"),
+            Expr::BinaryOpt(left, op, right_opt) => {
+                let mut str = left.to_syntax();
+                str.push_str(&op.lexeme);
+                if let Some(right) = right_opt {
+                    str.push_str(right.to_syntax().as_str());
+                }
+                str
+            },
+            Expr::Asm(asm_type, text) => {
+                let mut str = "asm ".to_string();
+                str.push_str(asm_type.to_syntax().as_str());
+                str.push_str(text.to_syntax().as_str());
+                str
+            },
+            Expr::Object(exprs) => {
+                let mut str = "[ ".to_string();
+
+                for expr in exprs {
+                    str.push_str(expr.to_syntax().as_str());
+                    str.push_str(" ");
+                }
+
+                str.push(']');
+                str
+            },
+            Expr::Fn(exprs, expr) => {
+                let mut str = "|".to_string();
+                for expr in exprs {
+                    str.push_str(expr.to_syntax().as_str());
+                    str.push_str(" ");
+                }
+                str.push('|');
+                str.push_str(expr.to_syntax().as_str());
+                str
+            },
+            Expr::CodeBlock(exprs) => {
+                let mut str = "{ ".to_string();
+
+                for expr in exprs {
+                    str.push_str(expr.to_syntax().as_str());
+                    str.push_str(" ");
+                }
+
+                str.push('}');
+                str
+            },
+            Expr::Type(exprs) => {
+                let mut str = "( ".to_string();
+
+                for expr in exprs {
+                    str.push_str(expr.to_syntax().as_str());
+                    str.push_str(" ");
+                }
+
+                str.push(')');
+                str
+            },
+            Expr::Literal(inner) => inner.prettify(),
+        }
+    }
 }
 
 pub struct TypeError {
@@ -222,5 +295,11 @@ impl Display for TypeError {
 impl Debug for TypeError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         Display::fmt(&self, f)
+    }
+}
+
+fn fill_slice_with_vec<T: Clone>(slice: &mut [T], vec: Vec<T>) {
+    for i in 0..slice.len() {
+        slice[i] = vec[i].clone();
     }
 }
