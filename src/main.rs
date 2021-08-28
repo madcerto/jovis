@@ -1,6 +1,10 @@
 use std::io::prelude::*;
 use std::io::Result;
+use expr::compiler::Environment;
 use expr::compiler::TypeCheck;
+use expr::compiler::asm_type::AsmLanguage;
+use expr::compiler::code_generator::CodeGenerator;
+use expr::compiler::asm_type::AsmTarget;
 use expr::parser::Parser;
 use token::scanner::Scanner;
 
@@ -30,13 +34,13 @@ fn parse_file(path: String) -> Result<()> {
     let mut scanner = Scanner::new(contents);
     match scanner.scan_tokens() {
         Ok(tokens) => {
-            // for token in tokens.clone() {
-            //     println!("{}", token.to_string());
-            // }
             let mut parser = Parser::new(tokens);
             let mut ast = parser.parse();
-            // ast.pprint();
-            ast.check_new_env().unwrap();
+            let mut env = Environment::new();
+            ast.check(&mut env).unwrap();
+            // turn ast into assembly
+            let mut generator = CodeGenerator::new(AsmLanguage::NASM);
+            generator.generate_code(ast, "".into(), AsmTarget::X86Unix, &mut env);
         },
         Err((line, message)) => {println!("{} at {}", message, line)}
     }

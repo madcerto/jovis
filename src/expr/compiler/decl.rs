@@ -25,7 +25,6 @@ impl Decl {
 
     pub fn initialize(&self, mut val: Expr, env: &mut Environment) -> Result<DType, TypeError> {
         let dtype = val.check(env)?;
-        println!("{:?} {:?}", self.dtype, dtype);
         if self.dtype != dtype { return Err(TypeError::new("initialization value does not match declared type".into(), None)) }
 
         match val.interpret(env) {
@@ -62,7 +61,6 @@ impl Decl {
     }
     pub fn ct_initialize(&self, mut val: Expr, env: &mut Environment) -> Option<(Vec<u8>, DType)> {
         let dtype = val.check(env).ok()?;
-        println!("{:?} {:?}", self.dtype, dtype);
         if self.dtype != dtype { return None }
 
         let (bytes, ct_dtype) = val.interpret(env)?;

@@ -3,11 +3,11 @@ mod dtype;
 mod interpreter;
 mod type_checker;
 mod decl;
-mod code_generator;
-mod asm_type;
+pub mod asm_type;
 pub mod core_lib;
+pub mod code_generator;
 
-use env::Environment;
+pub use env::Environment;
 use dtype::DType;
 use super::Expr;
 

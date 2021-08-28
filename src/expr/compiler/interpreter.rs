@@ -10,7 +10,7 @@ pub trait Interpret {
 impl Interpret for Expr {
     fn interpret(&mut self, env: &mut Environment) -> Option<(Vec<u8>, DType)> {
         match self {
-            Expr::Binary(left, op, right) => if op.ttype == TokenType::Equal { // TODO
+            Expr::Binary(left, op, right) => if op.ttype == TokenType::Equal {
                 let (decl_bytes, decl_type) = match left.interpret(env) {
                     Some(v) => v,
                     None => return None,
@@ -40,7 +40,7 @@ impl Interpret for Expr {
                         Some(arg_type) => arg_type,
                         None => return None,
                     };
-                    if &arg.check(env).ok()? != arg_type { return None }
+                    if &arg.interpret(env)?.1 != arg_type { return None }
                 } else {
                     if let Some(_) = msg.arg_type {
                         return None
@@ -172,7 +172,7 @@ impl Interpret for Expr {
                         }
                     }
                 }
-                Some((bytes,  DType::new(size, msgs, false, true))) // TODO: unknown or not?
+                Some((bytes,  DType::new(size, msgs, false, true)))
             },
             Expr::CodeBlock(exprs) => {
                 let mut last_bytes = vec![];
@@ -185,7 +185,7 @@ impl Interpret for Expr {
                 Some((last_bytes, last_type))
             },
             Expr::Fn(_capture_list, _expr) => None, // TODO
-            Expr::Type(exprs) => {
+            Expr::Type(exprs) => { // TODO
                 let mut type_val = VOID;
                 for expr in exprs {
                     let dtype = expr.check(env).ok()?;
@@ -204,8 +204,8 @@ impl Interpret for Expr {
                         type_val.size += composing_type.size;
                         type_val.msgs.extend(composing_type.msgs.into_iter());
                     }
-                    else if dtype == I32 { // replace with decl type
-                        let (name, type_expr) = match expr {
+                    else if dtype == DECL {
+                        let (name, type_expr) = match expr { // TODO: use actual decl
                             Expr::BinaryOpt(left, Token { ttype: TokenType::Semicolon, lexeme:_,line:_ }, right) => match right {
                                 Some(v) => (
                                         match &**left {
@@ -235,7 +235,7 @@ impl Interpret for Expr {
                     }
                     else { return None }
                 }
-                Some((type_val.size.to_ne_bytes().to_vec(), TYPE))
+                Some((type_val.size.to_ne_bytes().to_vec(), TYPE)) // TODO: add unknown specifier fields
             },
             Expr::Literal(inner) => match inner.clone() {
                 Literal::String(val) => {

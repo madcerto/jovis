@@ -2,20 +2,7 @@ use std::ffi::CString;
 use crate::{expr::parser::Parser, linker::j_link, token::{literal::Literal, scanner::Scanner}};
 use super::{Expr, TypeCheck, interpreter::Interpret, asm_type::{AsmLanguage, AsmTarget, NASMRegSize, NASMRegBase}, Environment, core_lib::*};
 
-pub fn _generate_code(mut ast: Expr, out_file: String, _target: AsmTarget, mut env: Environment) {
-    ast.check_new_env().unwrap();
-    // turn ast into assembly
-    let mut generator = CodeGenerator::new(AsmLanguage::NASM);
-    generator.gen_nasm(ast, &mut env, Some(NASMRegBase::A));
-    // TODO: Generate IR
-    // TODO: Write IR to file
-    // call linker on IR file
-    unsafe {
-        j_link(CString::new(out_file).unwrap().as_ptr());
-    }
-}
-
-struct CodeGenerator {
+pub struct CodeGenerator {
     code_vec: Vec<Code>,
     cur_code: Code,
     available_regs: Vec<NASMRegBase>
@@ -43,7 +30,29 @@ impl CodeGenerator {
         }
     }
 
-    pub fn gen_nasm(&mut self, ast: Expr, env: &mut Environment, reg_opt: Option<NASMRegBase>) -> bool { // TODO
+    pub fn generate_code(&mut self, ast: Expr, _out_file: String, _target: AsmTarget, env: &mut Environment) {
+        // turn ast into assembly
+        self.gen_nasm(ast, env, Some(NASMRegBase::A));
+        // temp: print out generated assembly
+        self.end_cur_code();
+        let mut counter = 0;
+        for code in self.code_vec.clone() {
+            let mut code_str = String::new();
+            for b in code.asm {
+                code_str.push(b as char);
+            }
+            println!("f{}:\n{:?}", counter, code_str);
+            counter += 1;
+        }
+        // TODO: Generate IR
+        // TODO: Write IR to file
+        // call linker on IR file
+        // unsafe {
+        //     j_link(CString::new(out_file).unwrap().as_ptr());
+        // }
+    }
+
+    pub fn gen_nasm(&mut self, mut ast: Expr, env: &mut Environment, reg_opt: Option<NASMRegBase>) -> bool { // TODO
         match ast {
             Expr::Binary(_, _, right) => {
                 let register = match reg_opt {
@@ -52,7 +61,8 @@ impl CodeGenerator {
                 };
                 let is_ptr = self.gen_nasm(*right, env, Some(register.clone()));
                 if !is_ptr {
-                    let mut code = format!("push {};", register.to_str(NASMRegSize::L32)).as_bytes().to_vec();
+                    // TODO: find some way to push correctly sized register
+                    let mut code = format!("push {};", register.to_str(NASMRegSize::L64)).as_bytes().to_vec();
                     self.cur_code.asm.append(&mut code);
                 }
                 is_ptr
@@ -114,45 +124,51 @@ impl CodeGenerator {
                 // issue since they're usually pretty small, but still would probably be best
                 // to have some sort of caching for this, maybe just give in and make a new data structure.
                 // handle embedded jovis expressions
-                for (i,_) in text.clone().match_indices("j#") {
-                    let mut scanner  = Scanner::new(text.get((i+2)..).unwrap().to_string());
-                    let (tokens, n) = scanner.scan_tokens_err_ignore();
-                    let mut parser = Parser::new(tokens);
-                    let mut expr = parser.parse();
-                    expr.check(env).unwrap();
+                // for (i,_) in text.clone().match_indices("j#") {
+                //     let mut scanner  = Scanner::new(text.get((i+2)..).unwrap().to_string());
+                //     let (tokens, n) = scanner.scan_tokens_err_ignore();
+                //     let mut parser = Parser::new(tokens);
+                //     let mut expr = parser.parse();
+                //     expr.check(env).unwrap();
 
-                    // get last semicolon before jovis expression, and push everything before that into cur_code
-                    let mut line_start = i;
-                    loop {
-                        if line_start == 0
-                        || text.get(line_start..(line_start+1)).unwrap() == ";"
-                        { break }
-                        line_start -= 1;
-                    }
-                    let preceeding_text = text.get(0..line_start).unwrap().to_string();
-                    text.replace_range(0..line_start, "");
-                    self.cur_code.asm.append(&mut preceeding_text.as_bytes().to_vec());
-                    // generate code from checked expr
-                    let register = self.get_available_reg(&reg_opt);
-                    self.gen_nasm(expr, env, Some(register.clone()));
-                    // replace expression in text with register
-                    text.replace_range(i..n, register.to_str(NASMRegSize::L32).as_str());
-                    self.available_regs.push(register);
-                }
+                //     // get last semicolon before jovis expression, and push everything before that into cur_code
+                //     let mut line_start = i;
+                //     loop {
+                //         if line_start == 0
+                //         || text.get(line_start..(line_start+1)).unwrap() == ";"
+                //         { break }
+                //         line_start -= 1;
+                //     }
+                //     let preceeding_text = text.get(0..line_start).unwrap().to_string();
+                //     text.replace_range(0..line_start, "");
+                //     self.cur_code.asm.append(&mut preceeding_text.as_bytes().to_vec());
+                //     // generate code from checked expr
+                //     let register = self.get_available_reg(&reg_opt);
+                //     self.gen_nasm(expr, env, Some(register.clone()));
+                //     // replace expression in text with register
+                //     text.replace_range(i..n, register.to_str(NASMRegSize::L32).as_str());
+                //     self.available_regs.push(register);
+                // }
 
                 // add text to current code object
                 self.cur_code.asm.append(&mut text.as_bytes().to_vec());
                 return is_ptr
             },
             Expr::Object(exprs) => if let Some(register) = &reg_opt {
-                let val_reg = self.get_available_reg(&reg_opt);
+                // TODO: while adding code gen for inner expressions,
+                // they may add stuff onto the stack in between the object's data
+                // probably just create a new stack for every expression
+                let val_reg = self.pop_available_reg(&reg_opt);
                 self.available_regs.retain(|x| x != register );
-                let mut addr_save = format!("mov {}, rsp", register.to_str(NASMRegSize::L64)).as_bytes().to_vec();
+                let mut addr_save = format!("mov {}, rsp;", register.to_str(NASMRegSize::L64)).as_bytes().to_vec();
                 self.cur_code.asm.append(&mut addr_save);
                 for expr in exprs {
-                    if !self.gen_nasm(expr, env, Some(val_reg.clone())) {
-                        let mut code = format!("push {};", val_reg.to_str(NASMRegSize::L32)).as_bytes().to_vec();
-                        self.cur_code.asm.append(&mut code);
+                    if !self.gen_nasm(expr.clone(), env, Some(val_reg.clone())) {
+                        if let Expr::Binary(_,_,_) = expr {/* do nothing */}
+                        else {
+                            let mut code = format!("push {};", val_reg.to_str(NASMRegSize::L64)).as_bytes().to_vec();
+                            self.cur_code.asm.append(&mut code);
+                        }
                     }
                 }
                 self.available_regs.push(val_reg);
@@ -178,7 +194,7 @@ impl CodeGenerator {
 
                 self.gen_nasm(*expr, env, reg_opt.clone());
                 // add cleanup code
-                let mut deinit = "mov rsp, rbp; pop rbp;".as_bytes().to_vec();
+                let mut deinit = "mov rsp, rbp; pop rbp; ret;".as_bytes().to_vec();
                 self.cur_code.asm.append(&mut deinit);
 
                 if let Some(register) = reg_opt {
@@ -191,18 +207,27 @@ impl CodeGenerator {
                 self.available_regs = prev_regs;
                 false
             },
-            Expr::CodeBlock(exprs) => {
-                let mut is_ptr = false;
-                for (i, expr) in exprs.clone().into_iter().enumerate() {
-                    if i == (exprs.len()-1) { is_ptr = self.gen_nasm(expr, env, reg_opt.clone()); }
-                        else { self.gen_nasm(expr, env, None); };
+            Expr::CodeBlock(mut exprs) => {
+                // TODO: once type checker has nested environments, store stack frame
+                match exprs.pop() {
+                    Some(last_expr) => {
+                        for expr in exprs.clone().into_iter() {
+                            self.gen_nasm(expr, env, None);
+                        }
+                        // TODO: restore stack frame
+                        self.gen_nasm(last_expr, env, reg_opt)
+                    },
+                    None => false,
                 }
-                is_ptr
             },
             Expr::Type(_) => todo!(), // leave as todo for a while because mostly unnecessary
             Expr::Literal(lit) => if let Some(register) = reg_opt {
                 match lit {
-                    Literal::String(_s) => todo!(),
+                    Literal::String(_s) => {
+                        let mut code = "/* string placeholder */".as_bytes().to_vec();
+                        self.cur_code.asm.append(&mut code);
+                        false
+                    },
                     Literal::Char(c) => {
                         let mut code = format!("mov {}, 0x{:X};", register.to_str(NASMRegSize::L8), c as u8).as_bytes().to_vec();
                         self.cur_code.asm.append(&mut code);
@@ -228,6 +253,11 @@ impl CodeGenerator {
         }
     }
 
+    fn end_cur_code(&mut self) {
+        self.code_vec.push(self.cur_code.clone());
+        self.cur_code = Code::new(self.cur_code.lang.clone());
+    }
+
     fn get_available_reg(&mut self, ret_reg: &Option<NASMRegBase>) -> NASMRegBase {
         match ret_reg {
             Some(register) => if &self.available_regs[0] == register
@@ -235,5 +265,10 @@ impl CodeGenerator {
             else { self.available_regs.remove(0) },
             None => { self.available_regs.remove(0) },
         }
+    }
+    fn pop_available_reg(&mut self, ret_reg: &Option<NASMRegBase>) -> NASMRegBase {
+        let reg = self.get_available_reg(ret_reg);
+        self.available_regs.retain(|x| x != &reg );
+        reg
     }
 }
