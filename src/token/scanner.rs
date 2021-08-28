@@ -181,6 +181,11 @@ impl Scanner {
 
             let text = self.source.get(self.start..self.current).unwrap();
             self.new_token(TokenType::Literal(Literal::Float(f32::from_str(text).unwrap())))
+        } else if self.peak() == 'b' {
+            let src_copy = self.source.clone();
+            let text = src_copy.get(self.start..self.current).unwrap();
+            self.advance();
+            self.new_token(TokenType::Literal(Literal::Byte(u8::from_str(text).unwrap())))
         } else {
             let text = self.source.get(self.start..self.current).unwrap();
             self.new_token(TokenType::Literal(Literal::Integer(i32::from_str(text).unwrap())))
