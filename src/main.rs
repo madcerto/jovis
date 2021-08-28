@@ -38,7 +38,7 @@ fn parse_file(path: String) -> Result<()> {
             let mut ast = parser.parse();
             let mut env = Environment::new();
             ast.check(&mut env).unwrap();
-            // turn ast into assembly
+            // generate code from ast; go back down the mountain
             let mut generator = CodeGenerator::new(AsmLanguage::NASM);
             generator.generate_code(ast, "".into(), AsmTarget::X86Unix, &mut env);
         },

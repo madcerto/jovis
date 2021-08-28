@@ -4,8 +4,8 @@ use super::{DType, dtype::Msg, core_lib};
 pub struct Environment {
     stack: Vec<Vec<u8>>,
     sp: usize,
-    pub rt_stack_type: DType,
-    pub ct_stack_type: DType
+    rt_stack_type: DType,
+    ct_stack_type: DType
 }
 
 impl Environment {
@@ -16,6 +16,13 @@ impl Environment {
             rt_stack_type: DType::new(0, vec![], false, false),
             ct_stack_type: core_lib::export()
         }
+    }
+
+    pub fn get_rt_stack_type(&self) -> DType {
+        self.rt_stack_type.clone()
+    }
+    pub fn get_ct_stack_type(&self) -> DType {
+        self.ct_stack_type.clone()
     }
 
     pub fn add_ct_msg(&mut self, msg: Msg) {
@@ -41,51 +48,7 @@ impl Environment {
         self.stack.get(addr)
     }
 
-
-
-
-
-
-
-    // pub fn declare_data(&mut self, name: String, dtype: DType) {
-    //     fn constructor(self_address: usize, env: Environment, arg: Option<Expr>) -> Expr {
-    //         // TODO: generate an asm node
-    //         Expr::Object(vec![])
-    //     }
-    //     self.rt_stack_type.msgs.push(Msg::new(name, constructor, dtype));
-    // }
-    // pub fn define_data(&mut self, name: String, dtype: DType, mut value: Vec<u8>) {
-    //     self.stack.append(&mut value);
-
-    //     fn ctime_constructor(self_address: usize, env: Environment, arg: Option<Expr>) -> Expr {
-    //         let mut literals = vec![];
-    //         let value = env.stack;
-    //         for b in value {
-    //             literals.push(Expr::Literal(Literal::Byte(b)));
-    //         }
-    //         Expr::Object(literals)
-    //     }
-    //     fn constructor(self_address: usize, env: Environment, arg: Option<Expr>) -> Expr {
-    //         // TODO: generate an asm node
-    //         Expr::Object(vec![])
-    //     }
-    //     self.rt_stack_type.msgs.push(Msg::new(name.clone(), constructor, dtype.clone()));
-    //     self.ct_stack_type.msgs.push(Msg::new(name, ctime_constructor, dtype));
-    // }
-    // pub fn define(&mut self, _name: String, dtype: DType, _val: Object) -> Object {
-    //     let obj = Object { dtype: dtype.clone(), address: self.sp };
-    //     self.stack.resize(dtype.size, 0);
-    //     self.sp += dtype.size;
-    //     // add variable to msgs
-    //     obj
-    // }
-    // pub fn _assign(&mut self, obj: Object, val: Vec<u8>) {
-    //     if val.len() != obj.dtype.size { panic!("mismatched object and value types") }
-    //     for i in obj.address..(obj.address + obj.dtype.size) {
-    //         self.stack[i] = val[i-obj.address]
-    //     }
-    // }
-    // pub fn _get_byte(&mut self, address: usize) -> u8 {
-    //     self.stack[address]
-    // }
+    pub fn print_stacks(&self) {
+        println!("ct: {:?}\nrt: {:?}", self.ct_stack_type, self.rt_stack_type);
+    }
 }

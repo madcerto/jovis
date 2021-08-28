@@ -31,7 +31,7 @@ impl Interpret for Expr {
             Expr::MsgEmission(self_opt, msg_name, arg_opt) => { // TODO
                 let self_t = match self_opt {
                     Some(inner) => inner.interpret(env)?.1,
-                    None => env.ct_stack_type.clone(),
+                    None => env.get_ct_stack_type(),
                 };
                 let msg = self_t.get_msg(&msg_name.lexeme)?;
                 // check if arg matched msg's arg type

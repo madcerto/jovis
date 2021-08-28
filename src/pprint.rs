@@ -78,14 +78,6 @@ impl PPrint for Literal {
             Literal::Integer(val) => format!("{}", val),
             Literal::Float(val) => format!("{}", val),
             Literal::Byte(val) => format!("{}b", val),
-            // Literal::Object(vals) => {
-            //     let mut str = "[ ".to_string();
-            //     for val in vals {
-            //         str.push_str(format!("{} ", val.prettify()).as_str())
-            //     }
-            //     str.push_str("]");
-            //     str
-            // },
         }
     }
 
