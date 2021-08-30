@@ -150,7 +150,8 @@ impl CodeGenerator {
                 self.cur_code.asm.append(&mut text.as_bytes().to_vec());
                 return is_ptr
             },
-            Expr::Object(exprs) => if let Some(register) = &reg_opt {
+            Expr::Object(exprs) => if let Some(register) = &reg_opt { // 1 future TODO
+                // TODO: put values together, handle endianness, and push them on together
                 let val_reg = self.pop_available_reg(&reg_opt);
                 self.available_regs.retain(|x| x != register );
                 let mut addr_save = format!("mov {}, rsp\n", register.to_str(NASMRegSize::L64)).as_bytes().to_vec();
@@ -158,10 +159,14 @@ impl CodeGenerator {
                 for expr in exprs {
                     if let Some(size) = self.gen_nasm(expr.clone(), env, Some(val_reg.clone())) {
                         if let Expr::Binary(_,_,_) = expr {/* do nothing */}
-                        // TODO: if size less than address size, do something different
-                        else {
-                            let mut code = format!("push {}\n", val_reg.to_str(NASMRegSize::L64)).as_bytes().to_vec();
-                            self.cur_code.asm.append(&mut code);
+                        else if size != NASMRegSize::L64 {
+                            let mut code_str = format!("sub rsp, {}\n", size.to_num());
+                            code_str.push_str(format!("mov [rsp], {} {}\n", size.to_name(), val_reg.to_str(size.clone())).as_str());
+    
+                            self.cur_code.asm.append(&mut code_str.as_bytes().to_vec());
+                        } else {
+                            let code_str = format!("push {}\n", val_reg.to_str(NASMRegSize::L64));
+                            self.cur_code.asm.append(&mut code_str.as_bytes().to_vec());
                         }
                     }
                 }
@@ -201,7 +206,7 @@ impl CodeGenerator {
                 self.available_regs = prev_regs;
                 Some(NASMRegSize::L64)
             },
-            Expr::CodeBlock(mut exprs) => { // TODO new stack frame
+            Expr::CodeBlock(mut exprs) => { // TODO waiting on type checker for new stack frame
                 // TODO: once type checker has nested environments, store stack frame
                 match exprs.pop() {
                     Some(last_expr) => {
