@@ -25,7 +25,8 @@ impl Decl {
 
     pub fn initialize(&self, mut val: Expr, env: &mut Environment) -> Result<DType, TypeError> {
         let dtype = val.check(env)?;
-        if self.dtype != dtype { return Err(TypeError::new("initialization value does not match declared type".into(), None)) }
+        let final_dtype = self.dtype.union(&dtype)
+            .ok_or(TypeError::new("initialization value does not match declared type".into(), None))?;
 
         match val.interpret(env) {
             Some((bytes, ct_dtype)) => {
@@ -41,8 +42,8 @@ impl Decl {
                     // add runtime msg TODO: defer code to a function
                     let constructor = move |_: Option<Box<Expr>>, _: &Environment, _: Option<Box<Expr>>|
                     { Expr::Object(vec![]) }; // TODO: return asm node
-                    env.add_rt_msg(Msg::new(self.name.clone(), Rc::new(constructor), dtype.clone(), None));
-                    env.add_rt_size(dtype.size);
+                    env.add_rt_msg(Msg::new(self.name.clone(), Rc::new(constructor), final_dtype.clone(), None));
+                    env.add_rt_size(final_dtype.size);
                     println!("{:?}", env.get_rt_stack_type());
                 }
                 env.add_ct_msg(Msg::new(self.name.clone(), Rc::new(constructor), ct_dtype, None));
@@ -51,8 +52,8 @@ impl Decl {
                 // add runtime msg TODO: defer code to a function
                 let constructor = move |_: Option<Box<Expr>>, _: &Environment, _: Option<Box<Expr>>|
                 { Expr::Object(vec![]) }; // TODO: return asm node
-                env.add_rt_msg(Msg::new(self.name.clone(), Rc::new(constructor), dtype.clone(), None));
-                env.add_rt_size(dtype.size);
+                env.add_rt_msg(Msg::new(self.name.clone(), Rc::new(constructor), final_dtype.clone(), None));
+                env.add_rt_size(final_dtype.size);
                 println!("{:?}", env.get_rt_stack_type());
             },
         }

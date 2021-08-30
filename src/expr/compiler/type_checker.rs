@@ -78,6 +78,7 @@ impl TypeCheck for Expr {
                         None => return Err(TypeError::new("expected static expression".into(), None))
                     }
                 };
+                
                 // check embedded jovis expressions
                 for (i,_) in text.clone().match_indices("j#") {
                     let mut scanner  = Scanner::new(text.get((i+2)..).unwrap().to_string());
@@ -86,7 +87,7 @@ impl TypeCheck for Expr {
                     let mut expr = parser.parse();
 
                     expr.check(env)?;
-                    text.replace_range((i+2)..n, expr.to_syntax().as_str());
+                    text.replace_range((i+2)..(n+i), expr.to_syntax().as_str());
                 }
                 // check return expressions
                 for (i,_) in text.clone().match_indices("jret#") {
@@ -116,18 +117,14 @@ impl TypeCheck for Expr {
                 for expr in exprs {
                     match expr {
                         Expr::Binary(left, op, right) => if op.ttype == TokenType::Equal {
-                            let (decl_bytes, decl_type) = match left.interpret(env) {
-                                Some(v) => v,
-                                None => return Err(TypeError::new("expected static expression".into(), Some(op.clone()))),
-                            };
+                            let (decl_bytes, decl_type) = left.interpret(env)
+                                .ok_or(TypeError::new("expected static expression".into(), Some(op.clone())))?;
                             if decl_type != DECL { return Err(TypeError::new("expected declaration expression".into(), Some(op.clone()))) }
                             
                             let mut decl_slice = [0; 22];
                             fill_slice_with_vec(&mut decl_slice, decl_bytes);
-                            let decl = match Decl::from_bytes(decl_slice, env) {
-                                Some(v) => v,
-                                None => return Err(TypeError::new("cannot get declaration name from stack".into(), Some(op.clone()))),
-                            };
+                            let decl = Decl::from_bytes(decl_slice, env)
+                                .ok_or(TypeError::new("cannot get declaration name from stack".into(), Some(op.clone())))?;
                             let name  = decl.name;
                             let dtype = decl.dtype;
                             if right.check(env)? != dtype {

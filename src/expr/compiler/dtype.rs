@@ -54,6 +54,16 @@ impl DType {
         None
     }
 
+    pub fn union(&self, other: &Self) -> Option<Self> {
+        if self != other { return None }
+        let size = self.size.max(other.size);
+        let msgs = if self.msgs.len() > other.msgs.len() { self.msgs.clone() }
+            else { other.msgs.clone() };
+        let size_unknown = self.size_unknown && other.size_unknown;
+        let msgs_unknown = self.msgs_unknown && other.msgs_unknown;
+        Some(Self::new(size, msgs, size_unknown, msgs_unknown))
+    }
+
     pub fn compose(&mut self, other: DType) {
         self.size += other.size;
         self.msgs.extend(other.msgs.into_iter());

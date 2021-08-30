@@ -13,7 +13,7 @@ impl Environment {
         Self {
             stack: Vec::with_capacity(0),
             sp: 0,
-            rt_stack_type: DType::new(0, vec![], false, false),
+            rt_stack_type: core_lib::export(),
             ct_stack_type: core_lib::export()
         }
     }

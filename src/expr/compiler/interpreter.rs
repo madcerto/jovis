@@ -66,19 +66,13 @@ impl Interpret for Expr {
                         let mut name = addr.to_ne_bytes().to_vec();
                         name.extend_from_slice(&str_size.to_ne_bytes());
 
-                        let type_opt = match right_opt {
-                            Some(right) => {
-                                match right.interpret(env) {
-                                    Some((bytes, dtype)) => {
-                                        // check dtype
-                                        if dtype != TYPE { return None }
-                                        Some(bytes)
-                                    },
-                                    None => None
-                                }
-                            },
-                            None => None
-                        };
+                        let type_opt = right_opt.as_mut().map(|right|
+                            right.interpret(env).map(|(bytes, dtype)| {
+                                // check dtype
+                                if dtype != TYPE { return None }
+                                Some(bytes)
+                            }).unwrap_or(None)
+                        ).unwrap_or(None);
                         let type_bytes = type_opt.unwrap_or(vec![0,0,0,0,1,1]);
 
                         let mut decl_bytes = name;
@@ -235,7 +229,7 @@ impl Interpret for Expr {
                     }
                     else { return None }
                 }
-                Some((type_val.size.to_ne_bytes().to_vec(), TYPE)) // TODO: add unknown specifier fields
+                Some((type_val.to_bytes(), TYPE))
             },
             Expr::Literal(inner) => match inner.clone() {
                 Literal::String(val) => {
