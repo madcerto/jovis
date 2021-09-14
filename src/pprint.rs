@@ -26,13 +26,17 @@ impl PPrint for Expr {
                 Some(right) => format!("( {} {} {} )", op.lexeme, left.prettify(), right.prettify()),
                 None => format!("( {} {} )", op.lexeme, left.prettify())
             },
-            Expr::Asm(_, _) => todo!(),
+            Expr::Asm(_, _, text_expr) => {
+                let mut str = "asm ".to_string();
+                str.push_str(text_expr.prettify().as_str());
+                str
+            },
             Expr::Object(exprs) => {
                 let mut str = "[\n".to_string();
                 for expr in exprs {
                     str.push_str(format!("{}\n", expr.prettify()).as_str())
                 }
-                str.push_str("]");
+                str.push(']');
                 str
             },
             Expr::CodeBlock(exprs) => {
