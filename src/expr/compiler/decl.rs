@@ -23,7 +23,7 @@ impl Decl {
         Some(Self { name, dtype })
     }
 
-    pub fn initialize(&self, mut val: Expr, env: &mut Environment) -> Result<DType, TypeError> {
+    pub fn initialize(&self, val: &mut Expr, env: &mut Environment) -> Result<DType, TypeError> {
         let dtype = val.check(env)?;
         let final_dtype = self.dtype.union(&dtype)
             .ok_or(TypeError::new("initialization value does not match declared type".into(), None))?;
@@ -44,7 +44,7 @@ impl Decl {
                     { Expr::Object(vec![]) }; // TODO: return asm node
                     env.add_rt_msg(Msg::new(self.name.clone(), Rc::new(constructor), final_dtype.clone(), None));
                     env.add_rt_size(final_dtype.size);
-                    println!("{:?}", env.get_rt_stack_type());
+                    println!("rt stack: {:?}", env.get_rt_stack_type());
                 }
                 env.add_ct_msg(Msg::new(self.name.clone(), Rc::new(constructor), ct_dtype, None));
             },
@@ -54,7 +54,7 @@ impl Decl {
                 { Expr::Object(vec![]) }; // TODO: return asm node
                 env.add_rt_msg(Msg::new(self.name.clone(), Rc::new(constructor), final_dtype.clone(), None));
                 env.add_rt_size(final_dtype.size);
-                println!("{:?}", env.get_rt_stack_type());
+                println!("rt stack: {:?}", env.get_rt_stack_type());
             },
         }
 

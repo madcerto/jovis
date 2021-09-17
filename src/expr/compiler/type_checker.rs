@@ -25,7 +25,7 @@ impl TypeCheck for Expr {
                     None => return Err(TypeError::new("cannot get declaration name from stack".into(), Some(op.clone()))),
                 };
 
-                decl.initialize(*right.clone(), env)
+                decl.initialize(right, env)
             } else { panic!("unexpected binary operator") },
             Expr::MsgEmission(self_opt, msg_name, arg_opt) => {
                 let self_t = match self_opt {
