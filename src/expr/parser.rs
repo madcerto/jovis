@@ -165,7 +165,7 @@ impl Parser {
 
         if let TokenType::Colon = self.peak().ttype {
             self.advance();
-            arg = Some(Box::new(self.in_expr()?));
+            arg = Some(Box::new(self.literal()?));
         }
         Ok( Expr::MsgEmission(Some(Box::new(left)), msg_name, arg) )
     }
