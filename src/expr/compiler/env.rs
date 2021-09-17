@@ -47,8 +47,4 @@ impl Environment {
     pub fn get_stack(&self, addr: usize) -> Option<&Vec<u8>> {
         self.stack.get(addr)
     }
-
-    pub fn print_stacks(&self) {
-        println!("ct: {:?}\nrt: {:?}", self.ct_stack_type, self.rt_stack_type);
-    }
 }
