@@ -127,10 +127,8 @@ pub fn export() -> DType {
         size: 0,
         msgs: vec![
             {
-                let mut byte_lits = vec![];
-                for byte in I32.to_bytes() {
-                    byte_lits.push(Expr::Literal(Literal::Byte(byte)));
-                }
+                let byte_lits: Vec<Expr> = I32.to_bytes().iter().map(|byte|
+                    { Expr::Literal(Literal::Byte(*byte)) }).collect();
                 let constructor = move |_: Option<Box<Expr>>, _: &Environment, _: Option<Box<Expr>>|
                 { Expr::Object(byte_lits.clone()) };
                 Msg::new("I32".into(), Rc::new(constructor), TYPE, None)
