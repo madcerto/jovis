@@ -30,11 +30,10 @@ impl CodeGenerator {
         }
     }
 
-    pub fn generate_code(&mut self, ast: Expr, _out_file: String, _target: AsmTarget, env: &mut Environment) {
-        // turn ast into assembly
-        self.gen_nasm(ast, env, Some(NASMRegBase::A));
+    pub fn generate_ir(&mut self, ast: Expr, _out_file: String, target: AsmTarget, env: &mut Environment) {
+        // generate code
+        self.generate_code(ast, target, env);
         // temp: print out generated assembly
-        self.end_cur_code();
         for (i, code) in self.code_vec.iter().enumerate() {
             let mut code_str = String::new();
             for b in code.clone().asm {
@@ -51,15 +50,20 @@ impl CodeGenerator {
         //     j_link(CString::new(out_file).unwrap().as_ptr());
         // }
     }
+    
+    pub fn generate_code(&mut self, ast: Expr, _target: AsmTarget, env: &mut Environment) {
+        // turn ast into assembly
+        self.gen_nasm(ast, env, Some(&NASMRegBase::A));
+    }
 
-    pub fn gen_nasm(&mut self, ast: Expr, env: &mut Environment, reg_opt: Option<NASMRegBase>) -> Option<NASMRegSize> { // TODO
+    pub fn gen_nasm(&mut self, ast: Expr, env: &mut Environment, reg_opt: Option<&NASMRegBase>) -> Option<NASMRegSize> { // TODO
         match ast {
             Expr::Binary(_, _, right) => {
                 let register = match reg_opt {
-                    Some(register) => register,
+                    Some(register) => register.clone(),
                     None => self.available_regs[0].clone(),
                 };
-                let is_ptr = self.gen_nasm(*right, env, Some(register.clone()));
+                let is_ptr = self.gen_nasm(*right, env, Some(&register));
                 if let Some(size) = is_ptr.clone() {
                     let mut code;
                     if size != NASMRegSize::L64 {
@@ -74,14 +78,15 @@ impl CodeGenerator {
                 }
                 is_ptr
             },
-            Expr::MsgEmission(_, _, _) => panic!("unexpected msg emission in checked ast"),
+            Expr::MsgEmission(_, name, _) => panic!("unexpected msg emission in checked ast: {}", name.lexeme),
             Expr::BinaryOpt(_, _, _) => todo!(), // leave as todo for a while because mostly unnecessary
-            Expr::Asm(_asm_type, text_expr) => { // 2 future TODO
+            Expr::Asm(_asm_type, _ret_type, text_expr) => { // 2 future TODO
                 // TODO: handle different assembly types
                 let mut text = match *text_expr {
                     Expr::Literal(Literal::String(string)) => string,
                     _ => panic!("checked asm node does not have string literal as text")
                 };
+                println!("{}", text);
 
                 // handle return expressions
                 let mut is_ptr = Some(NASMRegSize::L64);
@@ -90,7 +95,7 @@ impl CodeGenerator {
                     let (mut n, is_ptr_in) = if let Some((i, _)) = ret_text.match_indices("addr(").next() {
                         (i+5, None)
                     } else if let Some((i, _)) = ret_text.match_indices("val(").next() {
-                        (i+3, Some(NASMRegSize::L64))
+                        (i+4, Some(NASMRegSize::L64))
                     } else { panic!("expected 'addr' or 'val'") };
 
                     let mut operand = "".to_string();
@@ -116,6 +121,7 @@ impl CodeGenerator {
                     // set is_ptr
                     is_ptr = is_ptr_in;
                 }
+                println!("{}", text);
 
                 // TODO: we're forced to run the scanner and parser twice, which might not be an
                 // issue since expressions are usually pretty small, but still would probably be best
@@ -139,25 +145,26 @@ impl CodeGenerator {
                     text.replace_range(0..line_start, "");
                     self.cur_code.asm.append(&mut preceeding_text.as_bytes().to_vec());
                     // generate code from checked expr
-                    let register = self.get_available_reg(&reg_opt);
-                    self.gen_nasm(expr, env, Some(register.clone()));
+                    let register = self.get_available_reg(reg_opt);
+                    self.gen_nasm(expr, env, Some(&register));
                     // replace expression in text with register
                     text.replace_range((i-line_start)..(i-line_start+n), register.to_str(NASMRegSize::L64).as_str());
                     self.available_regs.push(register);
                 }
+                println!("{}", text);
 
                 // add text to current code object
                 self.cur_code.asm.append(&mut text.as_bytes().to_vec());
                 return is_ptr
             },
-            Expr::Object(exprs) => if let Some(register) = &reg_opt { // 1 future TODO
+            Expr::Object(exprs) => if let Some(register) = reg_opt { // 1 future TODO
                 // TODO: put values together, handle endianness, and push them on together
-                let val_reg = self.pop_available_reg(&reg_opt);
+                let val_reg = self.pop_available_reg(reg_opt);
                 self.available_regs.retain(|x| x != register );
                 let mut addr_save = format!("mov {}, rsp\n", register.to_str(NASMRegSize::L64)).as_bytes().to_vec();
                 self.cur_code.asm.append(&mut addr_save);
                 for expr in exprs {
-                    if let Some(size) = self.gen_nasm(expr.clone(), env, Some(val_reg.clone())) {
+                    if let Some(size) = self.gen_nasm(expr.clone(), env, Some(&val_reg)) {
                         if let Expr::Binary(_,_,_) = expr {/* do nothing */}
                         else if size != NASMRegSize::L64 {
                             let mut code_str = format!("sub rsp, {}\n", size.to_num());
@@ -228,7 +235,7 @@ impl CodeGenerator {
                         // in the future store the characters in .rodata
 
                         // store stack pointer
-                        let char_ptr_reg = self.get_available_reg(&Some(register.clone()));
+                        let char_ptr_reg = self.get_available_reg(Some(register));
                         text.push_str(format!("mov {}, rsp\n", char_ptr_reg.to_str(NASMRegSize::L64)).as_str());
                         // push each character onto the stack
                         // TODO: make chunk size dependant on target
@@ -273,6 +280,7 @@ impl CodeGenerator {
                         text.push_str(format!("mov {}, rsp\n", register.to_str(NASMRegSize::L64)).as_str());
                         // push first stored pointer onto stack
                         text.push_str(format!("push {}\n", char_ptr_reg.to_str(NASMRegSize::L64)).as_str());
+                        self.available_regs.push(char_ptr_reg);
                         // push length onto stack
                         text.push_str(format!("push {}\n", s.len()).as_str());
 
@@ -309,7 +317,7 @@ impl CodeGenerator {
         self.cur_code = Code::new(self.cur_code.lang.clone());
     }
 
-    fn get_available_reg(&mut self, ret_reg: &Option<NASMRegBase>) -> NASMRegBase {
+    fn get_available_reg(&mut self, ret_reg: Option<&NASMRegBase>) -> NASMRegBase {
         match ret_reg {
             Some(register) => if &self.available_regs[0] == register
             { self.available_regs.remove(1) }
@@ -317,7 +325,7 @@ impl CodeGenerator {
             None => { self.available_regs.remove(0) },
         }
     }
-    fn pop_available_reg(&mut self, ret_reg: &Option<NASMRegBase>) -> NASMRegBase {
+    fn pop_available_reg(&mut self, ret_reg: Option<&NASMRegBase>) -> NASMRegBase {
         let reg = self.get_available_reg(ret_reg);
         self.available_regs.retain(|x| x != &reg );
         reg
