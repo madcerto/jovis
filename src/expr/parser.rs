@@ -120,9 +120,10 @@ impl Parser {
     fn asm(&mut self) -> Result<Expr, ParseError> {
         self.advance();
         let asm_type = self.in_expr()?;
+        let ret_type = self.in_expr()?;
         let asm_code = self.in_expr()?;
 
-        Ok(Expr::Asm(Box::new(asm_type), Box::new(asm_code)))
+        Ok(Expr::Asm(Box::new(asm_type), Box::new(ret_type), Box::new(asm_code)))
     }
     fn binary_opt(&mut self, left: Expr) -> Result<Expr, ParseError> {
         let op = self.advance();

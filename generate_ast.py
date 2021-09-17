@@ -69,7 +69,7 @@ if __name__ == "__main__":
         "Binary | Expr, Token, Expr",
         "MsgEmission | Option<Box<Expr>>, Token, Option<Box<Expr>>",
         "BinaryOpt | Expr, Token, Option<Box<Expr>>",
-        "Asm | Expr, Expr",
+        "Asm | Expr, Expr, Expr",
         "Object | Vec<Expr>",
         "Fn | Vec<Expr>, Expr",
         "CodeBlock | Vec<Expr>",

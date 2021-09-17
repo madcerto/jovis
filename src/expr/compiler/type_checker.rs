@@ -63,7 +63,7 @@ impl TypeCheck for Expr {
                     Ok(DECL)
                 } else { panic!("unexpected binary_opt operator") }
             },
-            Expr::Asm(_, text_expr) => {
+            Expr::Asm(_, ret_type, text_expr) => {
                 let mut text = match *text_expr.clone() {
                     Expr::Literal(Literal::String(string)) => string,
                     _ => match text_expr.interpret(env) { // TODO: if string literal, get string directly
@@ -109,7 +109,13 @@ impl TypeCheck for Expr {
                 
                 **text_expr = Expr::Literal(Literal::String(text));
 
-                Ok(DType::new(0, vec![], true, true))
+                let mut ret_type_slice = [0; 6];
+                let ret_type_bytes = ret_type.interpret(env)
+                    .ok_or(TypeError::new("expected static expression for asm return type".into(), None))?.0;
+                fill_slice_with_vec(&mut ret_type_slice, ret_type_bytes);
+                let ret_type = DType::from_bytes(ret_type_slice);
+
+                Ok(ret_type)
             },
             Expr::Object(exprs) => { // TODO msg body
                 let mut size = 0;
@@ -220,9 +226,10 @@ impl TypeCheck for Expr {
                 }
                 str
             },
-            Expr::Asm(asm_type, text) => {
+            Expr::Asm(asm_type, ret_type, text) => {
                 let mut str = "asm ".to_string();
                 str.push_str(asm_type.to_syntax().as_str());
+                str.push_str(ret_type.to_syntax().as_str());
                 str.push_str(text.to_syntax().as_str());
                 str
             },

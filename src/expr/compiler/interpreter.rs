@@ -82,7 +82,7 @@ impl Interpret for Expr {
                     _ => panic!("unexpected operator in binary_opt")
                 }
             },
-            Expr::Asm(_, text_expr) => { // TODO
+            Expr::Asm(_, _, text_expr) => { // TODO
                 let mut text = match text_expr.interpret(env) { // TODO: if string literal, get string directly
                     Some((text_bytes, text_type)) => if text_type == STRING {
                         if text_bytes.len() as u32 == STRING.size {
