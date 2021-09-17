@@ -133,9 +133,8 @@ impl PartialEq for Msg {
 }
 impl Debug for Msg {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("Msg")
-         .field("name", &self.name)
-         .field("ret_type", &self.ret_type)
+        f.debug_struct(format!("Msg {}", self.name).as_str())
+         .field("type", &self.ret_type)
          .finish()
     }
 }
