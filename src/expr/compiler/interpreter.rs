@@ -1,6 +1,6 @@
 use std::{rc::Rc, str::FromStr};
 use super::{Expr, Environment, DType, dtype::Msg, core_lib::*, TypeCheck, decl::Decl};
-use crate::{token::{Token, TokenType, literal::Literal}};
+use crate::{expr::compiler::fill_slice_with_vec, token::{Token, TokenType, literal::Literal}};
 
 pub trait Interpret {
     fn interpret(&mut self, env: &mut Environment) -> Option<(Vec<u8>, DType)>;
@@ -199,29 +199,11 @@ impl Interpret for Expr {
                         type_val.msgs.extend(composing_type.msgs.into_iter());
                     }
                     else if dtype == DECL {
-                        let (name, type_expr) = match expr { // TODO: use actual decl
-                            Expr::BinaryOpt(left, Token { ttype: TokenType::Semicolon, lexeme:_,line:_ }, right) => match right {
-                                Some(v) => (
-                                        match &**left {
-                                            Expr::MsgEmission(None, name, None) => name.lexeme.clone(),
-                                            _ => panic!("expected identifier")
-                                        },
-                                    v),
-                                None => panic!("type inference for declarations in types is not yet implemented"),
-                            },
-                            _ => panic!("expected declaration")
-                        };
-                        let (bytes,_) = match type_expr.interpret(env) {
-                            Some(v) => v,
-                            None => return None,
-                        };
-                        let composing_type = if bytes.len() as u32 == TYPE.size {
-                            let mut type_slice = [0; 6]; // TODO: find more efficient way to do this
-                            for i in 0..6 {
-                                type_slice[i] = bytes[i];
-                            }
-                            DType::from_bytes(type_slice)
-                        } else { panic!("value has unexpected size") };
+                        let mut decl_slice = [0; 22];
+                        fill_slice_with_vec(&mut decl_slice, expr.interpret(env)?.0);
+                        let decl = Decl::from_bytes(decl_slice, env).unwrap(); // TODO: error handling
+                        let name = decl.name;
+                        let composing_type = decl.dtype;
                         type_val.size += composing_type.size;
                         let constructor = move |_: Option<Box<Expr>>, _: &Environment, _: Option<Box<Expr>>|
                         { Expr::Object(vec![]) }; // TODO: add asm node
