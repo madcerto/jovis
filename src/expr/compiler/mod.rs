@@ -12,3 +12,9 @@ use dtype::DType;
 use super::Expr;
 
 pub use type_checker::TypeCheck;
+
+fn fill_slice_with_vec<T: Clone>(slice: &mut [T], vec: Vec<T>) {
+    for i in 0..slice.len() {
+        slice[i] = vec[i].clone();
+    }
+}

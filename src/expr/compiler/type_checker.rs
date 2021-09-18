@@ -1,6 +1,6 @@
 use std::{fmt::{Debug, Display}, rc::Rc};
 use crate::{expr::parser::Parser, pprint::PPrint, token::{Token, TokenType, literal::Literal, scanner::Scanner}};
-use super::{Expr, env::Environment, interpreter::Interpret, core_lib::*, dtype::{DType, Msg}, decl::Decl};
+use super::{Expr, core_lib::*, decl::Decl, dtype::{DType, Msg}, env::Environment, fill_slice_with_vec, interpreter::Interpret};
 
 pub trait TypeCheck {
     fn check(&mut self, env: &mut Environment) -> Result<DType, TypeError>;
@@ -196,7 +196,7 @@ impl TypeCheck for Expr {
                 for expr in exprs {
                     let dtype = expr.check(env)?;
                     if dtype != TYPE
-                    && dtype != FN
+                    && dtype != DECL
                         { return Err(TypeError::new("unexpected expression in type definition".into(), None)) }
                 }
                 Ok(TYPE)
@@ -299,11 +299,5 @@ impl Display for TypeError {
 impl Debug for TypeError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         Display::fmt(&self, f)
-    }
-}
-
-fn fill_slice_with_vec<T: Clone>(slice: &mut [T], vec: Vec<T>) {
-    for i in 0..slice.len() {
-        slice[i] = vec[i].clone();
     }
 }
