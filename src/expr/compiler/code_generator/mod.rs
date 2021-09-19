@@ -1,4 +1,4 @@
-use std::ffi::CString;
+use std::{ffi::CString, io::Write};
 use crate::{expr::parser::Parser, linker::j_link, token::{literal::Literal, scanner::Scanner}};
 use super::{Expr, asm_type::{AsmLanguage, AsmTarget, NASMRegSize, NASMRegBase}, Environment};
 
@@ -30,25 +30,27 @@ impl CodeGenerator {
         }
     }
 
-    pub fn generate_ir(&mut self, ast: Expr, _out_file: String, target: AsmTarget, env: &mut Environment) {
+    pub fn generate_ir(mut self, ast: Expr, out_path: String, target: AsmTarget, env: &mut Environment) {
         // generate code
         self.generate_code(ast, target, env);
         // temp: print out generated assembly
         for (i, code) in self.code_vec.iter().enumerate() {
             let mut code_str = String::new();
             for b in code.clone().asm {
-                let mut c = b as char;
-                if c == '\n' { c = '\n' }
+                let c = b as char;
                 code_str.push(c);
             }
             println!("f{}:\n{}", i, code_str);
         }
         // TODO: Generate IR
         // TODO: Write IR to file
+        // temp: manually write ir file
+        self.manual_ir_write(&out_path);
         // call linker on IR file
-        // unsafe {
-        //     j_link(CString::new(out_file).unwrap().as_ptr());
-        // }
+        unsafe {
+            let cstr = CString::new(out_path).unwrap();
+            j_link(cstr.as_ptr());
+        }
     }
     
     pub fn generate_code(&mut self, ast: Expr, _target: AsmTarget, env: &mut Environment) {
@@ -86,7 +88,6 @@ impl CodeGenerator {
                     Expr::Literal(Literal::String(string)) => string,
                     _ => panic!("checked asm node does not have string literal as text")
                 };
-                println!("{}", text);
 
                 // handle return expressions
                 let mut is_ptr = Some(NASMRegSize::L64);
@@ -121,7 +122,6 @@ impl CodeGenerator {
                     // set is_ptr
                     is_ptr = is_ptr_in;
                 }
-                println!("{}", text);
 
                 // TODO: we're forced to run the scanner and parser twice, which might not be an
                 // issue since expressions are usually pretty small, but still would probably be best
@@ -151,7 +151,6 @@ impl CodeGenerator {
                     text.replace_range((i-line_start)..(i-line_start+n), register.to_str(NASMRegSize::L64).as_str());
                     self.available_regs.push(register);
                 }
-                println!("{}", text);
 
                 // add text to current code object
                 self.cur_code.asm.append(&mut text.as_bytes().to_vec());
@@ -329,5 +328,32 @@ impl CodeGenerator {
         let reg = self.get_available_reg(ret_reg);
         self.available_regs.retain(|x| x != &reg );
         reg
+    }
+
+    fn manual_ir_write(self, out_path: &String) {
+        let mut buf: Vec<u8> = vec![];
+        // write header
+        let fn_no = self.code_vec.len();
+        let addr_size: u8;
+        #[cfg(target_pointer_width = "64")]
+        { addr_size = 8; }
+        #[cfg(target_pointer_width = "32")]
+        { byte_size = 4; }
+        buf.extend_from_slice(&(0 as usize).to_ne_bytes()); // data ptr
+        buf.extend_from_slice(&(0 as usize).to_ne_bytes()); // data size
+        buf.extend_from_slice(&((6*addr_size as usize) as usize).to_ne_bytes()); // code ptr
+        buf.extend_from_slice(&(fn_no as usize).to_ne_bytes()); // fn no
+        buf.extend_from_slice(&(0 as usize).to_ne_bytes()); // dep ptr
+        buf.extend_from_slice(&(0 as usize).to_ne_bytes()); // dep no
+
+        // writen fns
+        for code in self.code_vec {
+            let size = code.asm.len();
+            let mut text = code.asm;
+            buf.extend_from_slice(&size.to_ne_bytes());
+            buf.append(&mut text);
+        }
+        let mut file = std::fs::File::create(out_path).unwrap();
+        file.write_all(&mut buf).unwrap();
     }
 }

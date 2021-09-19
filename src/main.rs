@@ -39,9 +39,9 @@ fn parse_file(path: String) -> Result<()> {
             let mut env = Environment::new();
             ast.check(&mut env).unwrap();
             // generate code from ast; go back down the mountain
-            let mut generator = CodeGenerator::new(AsmLanguage::NASM);
+            let generator = CodeGenerator::new(AsmLanguage::NASM);
             
-            generator.generate_ir(ast, "".into(), AsmTarget::X86Unix, &mut env);
+            generator.generate_ir(ast, "test.jir".into(), AsmTarget::X86Unix, &mut env);
         },
         Err((line, message)) => {println!("{} at {}", message, line)}
     }
