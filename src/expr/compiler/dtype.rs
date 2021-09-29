@@ -46,6 +46,11 @@ impl DType {
         bytes.push(self.msgs_unknown as u8);
         bytes
     }
+    pub fn to_expr(&self) -> Expr {
+        let mut byte_lits = vec![];
+        for byte in self.to_bytes().clone() { byte_lits.push(Expr::Literal(Literal::Byte(byte))) }
+        Expr::Object(byte_lits)
+    }
 
     pub fn get_msg(&self, msg_name: &String) -> Option<Msg> {
         for msg in &self.msgs {
