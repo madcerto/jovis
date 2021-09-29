@@ -70,7 +70,7 @@ impl CodeGenerator {
                     let mut code;
                     if size != NASMRegSize::L64 {
                         let mut code_str = format!("sub rsp, {}\n", size.to_num());
-                        code_str.push_str(format!("mov [rsp], {} {}\n", size.to_name(), register.to_str(size.clone())).as_str());
+                        code_str.push_str(format!("mov {} [rsp], {}\n", size.to_name(), register.to_str(size.clone())).as_str());
 
                         code = code_str.as_bytes().to_vec();
                     } else {
@@ -167,7 +167,7 @@ impl CodeGenerator {
                         if let Expr::Binary(_,_,_) = expr {/* do nothing */}
                         else if size != NASMRegSize::L64 {
                             let mut code_str = format!("sub rsp, {}\n", size.to_num());
-                            code_str.push_str(format!("mov [rsp], {} {}\n", size.to_name(), val_reg.to_str(size.clone())).as_str());
+                            code_str.push_str(format!("mov {} [rsp], {}\n", size.to_name(), val_reg.to_str(size.clone())).as_str());
     
                             self.cur_code.asm.append(&mut code_str.as_bytes().to_vec());
                         } else {
@@ -255,16 +255,16 @@ impl CodeGenerator {
                                 text.push_str(format!("sub rsp, {}\n", len).as_str());
                                 if len % 4 < len {
                                     offset += 4;
-                                    text.push_str(format!("mov [{}-{}], dword 0x", char_ptr_reg.to_str(NASMRegSize::L64), 4).as_str());
+                                    text.push_str(format!("mov dword [{}-{}], 0x", char_ptr_reg.to_str(NASMRegSize::L64), 4).as_str());
                                     text.push_str(format!("{:X}{:X}{:X}{:X}\n", last_chunk[0],last_chunk[1],last_chunk[2],last_chunk[3]).as_str());
                                 }
                                 if len % 2 < len {
-                                    text.push_str(format!("mov [{}-{}], word 0x", char_ptr_reg.to_str(NASMRegSize::L64), (offset+2)).as_str());
+                                    text.push_str(format!("mov word [{}-{}], 0x", char_ptr_reg.to_str(NASMRegSize::L64), (offset+2)).as_str());
                                     text.push_str(format!("{:X}{:X}\n", last_chunk[offset],last_chunk[offset + 1]).as_str());
                                     offset += 2;
                                 }
                                 if offset != len {
-                                    text.push_str(format!("mov [{}-{}], byte 0x", char_ptr_reg.to_str(NASMRegSize::L64), (offset+1)).as_str());
+                                    text.push_str(format!("mov byte [{}-{}], 0x", char_ptr_reg.to_str(NASMRegSize::L64), (offset+1)).as_str());
                                     text.push_str(format!("{:X}\n", last_chunk[offset]).as_str());
                                 }
                             } else {
