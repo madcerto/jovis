@@ -1,4 +1,14 @@
-{
-    var := 65
-    var
-}
+[
+    main ;= ||{ # input inference assumes no inputs
+        int_val; I32 = -24
+        float_val ;= 12.34
+        str_val ;= "fdfdsf"
+        char_val ;= 'f'
+        byte_val ;= 10b
+
+        MyType ;= (I32 I32)
+        my_type_val; MyType = [-1 -2]
+
+        int_val_copy ;= asm NASM I32 " jret# addr(j#int_val) "
+    }
+]
