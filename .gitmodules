@@ -1,0 +1,3 @@
+[submodule "lib/jlinker"]
+	path = lib/jlinker
+	url = https://github.com/MadScientist2854/jovis-linker
