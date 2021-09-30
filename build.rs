@@ -1,5 +1,5 @@
 fn main() {
-    println!("cargo:rerun-if-changed=lib/libjlinker.a");
+    println!("cargo:rerun-if-changed=lib/jlinker/bin/libjlinker.a");
     println!("cargo:rustc-link-search=./lib/jlinker/bin/");
     println!("cargo:rustc-link-lib=jlinker");
     println!("cargo:rustc-link-lib=keystone");
