@@ -1,5 +1,6 @@
 [
-    pub: main ;= ||{ # input inferrence assumes no inputs
+    pub: main ;= |capture ;= 40|{ # input inferrence assumes no inputs
+        meaning_of_life ;= capture.+:2
         int_val ;= -24
         float_val ;= 12.34
         str_val ;= "fdfdsf"
