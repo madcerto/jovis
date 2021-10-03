@@ -28,7 +28,7 @@ impl Interpret for Expr {
                 
                 decl.ct_initialize(*right.clone(), env)
             } else { panic!("unexpected binary operator") },
-            Expr::MsgEmission(self_opt, msg_name, arg_opt) => { // TODO
+            Expr::MsgEmission(self_opt, msg_name, arg_opt) => {
                 let self_t = match self_opt {
                     Some(inner) => inner.interpret(env)?.1,
                     None => env.get_ct_stack_type(),
@@ -46,10 +46,11 @@ impl Interpret for Expr {
                         return None
                     }
                 }
+
                 let mut constructed_expr = msg.construct(self_opt.clone(), env, arg_opt.clone());
                 let (bytes, dtype) = constructed_expr.interpret(env)?;
                 if dtype != msg.ret_type { return None }
-                // *self = constructed_expr; // TODO: maybe construct runtime type's msg instead
+                *self = constructed_expr;
                 Some((bytes, dtype))
             },
             Expr::BinaryOpt(left, op, right_opt) => {
