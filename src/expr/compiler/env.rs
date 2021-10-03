@@ -5,8 +5,7 @@ pub struct Environment {
     stack: Vec<Vec<u8>>,
     sp: usize,
     rt_stack_type: DType,
-    ct_stack_type: DType,
-    fn_envs: Vec<Environment>
+    ct_stack_type: DType
 }
 
 impl Environment {
@@ -15,8 +14,7 @@ impl Environment {
             stack: Vec::with_capacity(0),
             sp: 0,
             rt_stack_type: core_lib::export(),
-            ct_stack_type: core_lib::export(),
-            fn_envs: vec![]
+            ct_stack_type: core_lib::export()
         }
     }
 
@@ -48,15 +46,5 @@ impl Environment {
     }
     pub fn get_stack(&self, addr: usize) -> Option<&Vec<u8>> {
         self.stack.get(addr)
-    }
-
-    pub fn add_fn(&mut self, fn_env: Environment) {
-        self.fn_envs.push(fn_env);
-    }
-    pub fn propogate_fns(&mut self, other: &mut Self) {
-        let fn_envs = self.fn_envs.clone();
-        self.fn_envs.clear();
-        for fn_env in fn_envs
-            { other.fn_envs.push(fn_env) };
     }
 }

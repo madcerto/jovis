@@ -107,6 +107,8 @@ impl Interpret for Expr {
                 //     let _etype = expr.interpret(env)?;
                 //     // TODO: replace expression in string with generated code for expression
                 // }
+
+                // TODO
                 let mut val = vec![];
                 for (i,_) in text.clone().match_indices("jret(") {
                     let mut n = i+5;
@@ -168,7 +170,8 @@ impl Interpret for Expr {
                 }
                 Some((last_bytes, last_type))
             },
-            Expr::Fn(_capture_list, _expr) => None, // TODO
+            Expr::Fn(_, _) => None, // this value is available at comptime but in the linker
+            // TODO: make fn appear in the comptime stack
             Expr::Type(exprs) => { // TODO: msg body
                 let mut type_val = VOID;
                 for expr in exprs {

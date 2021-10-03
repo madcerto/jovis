@@ -213,7 +213,7 @@ impl CodeGenerator {
                 Some(NASMRegSize::L64)
             },
             Expr::CodeBlock(mut exprs) => { // TODO waiting on type checker for new stack frame
-                // TODO: once type checker has nested environments, store stack frame
+                // TODO: once type checker has nested environments, store stack frame here
                 match exprs.pop() {
                     Some(last_expr) => {
                         for expr in exprs.clone().into_iter() {
@@ -225,7 +225,7 @@ impl CodeGenerator {
                     None => Some(NASMRegSize::L64),
                 }
             },
-            Expr::Type(_) => None, // leave as todo for a while because mostly unnecessary
+            Expr::Type(_) => None, // leave as None for a while because mostly unnecessary
             Expr::Literal(lit) => if let Some(register) = reg_opt { // TODO make target specific
                 match lit {
                     Literal::String(s) => {
@@ -309,11 +309,6 @@ impl CodeGenerator {
                 }
             } else { Some(NASMRegSize::L64) },
         }
-    }
-
-    fn end_cur_code(&mut self) {
-        self.code_vec.push(self.cur_code.clone());
-        self.cur_code = Code::new(self.cur_code.lang.clone());
     }
 
     fn get_available_reg(&mut self, ret_reg: Option<&NASMRegBase>) -> NASMRegBase {
