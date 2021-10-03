@@ -1,6 +1,6 @@
 use std::{rc::Rc, str::FromStr};
 use super::{Expr, Environment, DType, dtype::Msg, core_lib::*, TypeCheck, decl::Decl};
-use crate::{expr::compiler::fill_slice_with_vec, token::{TokenType, literal::Literal}};
+use crate::{expr::compiler::fill_slice_with_vec, token::{Token, TokenType, literal::Literal}};
 
 pub trait Interpret {
     fn interpret(&mut self, env: &mut Environment) -> Option<(Vec<u8>, DType)>;
@@ -124,36 +124,25 @@ impl Interpret for Expr {
                 // TODO: simulate running assembly
                 Some((val, VOID))
             },
-            Expr::Object(exprs) => { // TODO
+            Expr::Object(exprs) => {
                 let mut bytes = vec![];
                 let mut msgs = vec![];
                 let mut size = 0;
                 for expr in exprs {
                     match expr {
-                        Expr::Binary(left, op, right) => if let TokenType::Equal = op.ttype {
-                            let name  = match *left.clone() {
-                                Expr::BinaryOpt(left, op, _) => match op.ttype {
-                                    TokenType::Semicolon => match *left {
-                                        Expr::MsgEmission(None, name, None) => name.lexeme,
-                                        _ => panic!("expected identifier")
-                                    },
-                                    _ => panic!("expected declaration")
-                                },
-                                _ => panic!("expected declaration")
-                            };
+                        Expr::Binary(left, Token { ttype: TokenType::Equal, .. }, right) => {
+                            let decl = Decl::from_expr(left, env)?;
                             let val = right.interpret(env);
-                            match val {
-                                Some((mut val_bytes, dtype)) => {
-                                    bytes.append(&mut val_bytes);
-                                    let mut byte_lits = vec![];
-                                    for byte in val_bytes.clone() { byte_lits.push(Expr::Literal(Literal::Byte(byte))) }
-                                    let constructor = move |_: Option<Box<Expr>>, _: &Environment, _: Option<Box<Expr>>|
+                            if let Some((mut val_bytes, dtype)) = val {
+                                bytes.append(&mut val_bytes);
+                                let byte_lits: Vec<Expr> = val_bytes.iter().map(|b|
+                                    Expr::Literal(Literal::Byte(*b))
+                                ).collect();
+                                let constructor = move |_: Option<Box<Expr>>, _: &Environment, _: Option<Box<Expr>>|
                                     { Expr::Object(byte_lits.clone()) };
-                                    msgs.push(Msg::new(name, Rc::new(constructor), dtype.clone(), None));
-                                    size += dtype.size;
-                                },
-                                None => return None,
-                            }
+                                msgs.push(Msg::new(decl.name, Rc::new(constructor), dtype.clone(), None));
+                                size += dtype.size;
+                            } else { return None }
                         }
                         _ => {
                             let val = expr.interpret(env);
