@@ -22,7 +22,7 @@ impl Decl {
 
         Some(Self { name, dtype })
     }
-    pub fn from_expr(expr: Expr, env: &mut Environment) -> Option<Self> {
+    pub fn from_expr(expr: &mut Expr, env: &mut Environment) -> Option<Self> {
         let mut decl_slice = [0; 22];
         let expr_bytes = expr.interpret(env)?.0;
         fill_slice_with_vec(&mut decl_slice, expr_bytes);

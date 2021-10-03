@@ -155,38 +155,62 @@ impl TypeCheck for Expr {
                 }
                 Ok(last_type)
             },
-            Expr::Fn(capture_list, expr) => { // TODO: capture list stuff
+            Expr::Fn(capture_list, expr) => { // 2 TODOs 1 future
                 let mut new_env = Environment::new();
                 // add capture list to new environment
                 for expr in capture_list {
-                    // TODO: try interpret the expression
-                    match expr {
-                        Expr::MsgEmission(self_opt, msg_name, arg_opt) => {
+                    match expr.clone() {
+                        Expr::MsgEmission(_, msg_name, arg_opt) => {
                             match arg_opt {
                                 Some(_) => {
-                                    let dtype = expr.check(env)?;
-                                    // new_env.rt_stack_type.compose(dtype); TODO: idk what this does plz fix later
+                                    let _dtype = expr.check(env)?;
+                                    todo!() // captured expressions have to be named
                                 },
                                 None => {
-                                    let tmp;
-                                    let self_t = match self_opt {
-                                        Some(inner) => {tmp = inner.check(env)?; tmp},
-                                        None => env.get_rt_stack_type(),// TODO: this used to make both be references, was that for a reason?
-                                    };
-                                    let msg = match self_t.get_msg(&msg_name.lexeme) {
-                                        Some(inner) => inner,
-                                        None => return Err(TypeError::new("unexpected message".into(), Some(msg_name.clone())))
-                                    };
-                                    // TODO: transform all references to stack base to reference a stack value
-                                    // which stores old stack base
-                                    new_env.add_rt_msg(msg);
+                                    let (bytes, dtype) = expr.interpret(env)
+                                        .ok_or(TypeError::new("expected static expression".into(), Some(msg_name.clone())))?;
+                                    let byte_lits: Vec<Expr> = bytes.iter().map(|b| Expr::Literal(Literal::Byte(*b))).collect();
+                                    let constructor = move |_: Option<Box<Expr>>, _: &Environment, _: Option<Box<Expr>>|
+                                        { Expr::Object(byte_lits.clone()) };
+                                    let msg = Msg::new(msg_name.lexeme, Rc::new(constructor), dtype, None);
+                                    new_env.add_rt_msg(msg.clone());
+                                    new_env.add_ct_msg(msg);
+                                    new_env.push(bytes);
                                 },
                             }
                         },
+                        Expr::Binary(mut left, Token{ ttype: TokenType::Equal, lexeme, line }, mut right) => {
+                            let tkn_opt = Some(Token::new(TokenType::Equal, lexeme, line));
+                            let msg_name = if let Expr::BinaryOpt(_, Token{ ttype: TokenType::Semicolon, lexeme, line }, _) = *left.clone() {
+                                let tkn_opt = Some(Token::new(TokenType::Semicolon, lexeme, line));
+                                let decl = Decl::from_expr(&mut *left, env)
+                                    .ok_or(TypeError::new("could not form declaration".into(), tkn_opt))?;
+                                decl.name
+                            }
+                            else { return Err(TypeError::new("expected declaration".into(), tkn_opt)) };
+
+                            let (bytes, dtype) = right.interpret(env) // TODO: make expr be mutated here
+                                .ok_or(TypeError::new("expected static expression".into(), tkn_opt))?;
+                            let byte_lits: Vec<Expr> = bytes.iter().map(|b| Expr::Literal(Literal::Byte(*b))).collect();
+                            let constructor = move |_: Option<Box<Expr>>, _: &Environment, _: Option<Box<Expr>>|
+                                { Expr::Object(byte_lits.clone()) };
+                            let msg = Msg::new(msg_name, Rc::new(constructor), dtype, None);
+                            new_env.add_rt_msg(msg.clone());
+                            new_env.add_ct_msg(msg);
+                            new_env.push(bytes);
+                        },
                         _ => {
-                            let dtype = expr.check(env)?;
-                            // new_env.rt_stack_type.compose(dtype); TODO: don't know what this is either
-                        } // TODO
+                            // let (val, dtype) = expr.interpret(&mut new_env)
+                            //     .ok_or(TypeError::new("captured expression is not static".into(), None))?;
+                            // for msg in dtype.msgs {
+                            //     new_env.add_rt_msg(msg.clone());
+                            //     new_env.add_ct_msg(msg);
+                            // }
+                            // new_env.add_rt_size(dtype.size);
+                            // new_env.add_ct_size(dtype.size);
+                            // new_env.push(val);
+                            return Err(TypeError::new("unnamed captures not supported yet. put your value in an assignment".into(), None))
+                        }
                     }
                 }
                 expr.check(&mut new_env)?;
