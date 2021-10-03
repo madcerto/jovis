@@ -214,6 +214,8 @@ impl TypeCheck for Expr {
                     }
                 }
                 expr.check(&mut new_env)?;
+                new_env.propogate_fns(env);
+                env.add_fn(new_env);
                 Ok(FN)
             },
             Expr::Type(exprs) => {
