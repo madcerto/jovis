@@ -5,6 +5,7 @@ the jovis programming language can be best described as a thin metaprogramming w
 
 ## Usage
  - `<compiler binary> <source file name>`
+ - a file called `jexec.o` will appear. this is the compiled program. simply run `ld` on it and run it
 
 pre-compiled binaries will be available very soon.
 
