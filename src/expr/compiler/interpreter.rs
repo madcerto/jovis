@@ -169,7 +169,7 @@ impl Interpret for Expr {
                 Some((last_bytes, last_type))
             },
             Expr::Fn(_capture_list, _expr) => None, // TODO
-            Expr::Type(exprs) => { // TODO
+            Expr::Type(exprs) => { // TODO: msg body
                 let mut type_val = VOID;
                 for expr in exprs {
                     let dtype = expr.check(env).ok()?;
@@ -179,10 +179,8 @@ impl Interpret for Expr {
                             None => return None,
                         };
                         let composing_type = if bytes.len() as u32 == TYPE.size {
-                            let mut type_slice = [0; 6]; // TODO: find more efficient way to do this
-                            for i in 0..6 {
-                                type_slice[i] = bytes[i];
-                            }
+                            let mut type_slice = [0; 6];
+                            fill_slice_with_vec(&mut type_slice, bytes);
                             DType::from_bytes(type_slice)
                         } else { panic!("value of unexpected size") };
                         type_val.size += composing_type.size;
@@ -191,7 +189,7 @@ impl Interpret for Expr {
                     else if dtype == DECL {
                         let mut decl_slice = [0; 22];
                         fill_slice_with_vec(&mut decl_slice, expr.interpret(env)?.0);
-                        let decl = Decl::from_bytes(decl_slice, env).unwrap(); // TODO: error handling
+                        let decl = Decl::from_bytes(decl_slice, env)?;
                         let name = decl.name;
                         let composing_type = decl.dtype;
                         type_val.size += composing_type.size;
