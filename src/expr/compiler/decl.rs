@@ -1,6 +1,6 @@
 use std::rc::Rc;
 use crate::token::literal::Literal;
-use super::{Expr, TypeCheck, core_lib::*, dtype::{DType, Msg}, env::Environment, type_checker::TypeError, interpreter::Interpret};
+use super::{Expr, TypeCheck, core_lib::*, dtype::{DType, Msg}, env::Environment, fill_slice_with_vec, interpreter::Interpret, type_checker::TypeError};
 
 pub struct Decl {
     pub name: String,
@@ -21,6 +21,12 @@ impl Decl {
         let dtype = DType::from_bytes(type_bytes);
 
         Some(Self { name, dtype })
+    }
+    pub fn from_expr(expr: Expr, env: &mut Environment) -> Option<Self> {
+        let mut decl_slice = [0; 22];
+        let expr_bytes = expr.interpret(env)?.0;
+        fill_slice_with_vec(&mut decl_slice, expr_bytes);
+        Decl::from_bytes(decl_slice, env)
     }
 
     pub fn initialize(&self, val: &mut Expr, env: &mut Environment) -> Result<DType, TypeError> {
