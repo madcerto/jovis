@@ -16,6 +16,5 @@ pre-compiled binaries will be available very soon.
  - Keystone
 
 ### Commands
+ - `make lib/jlinker`
  - `cargo build`
-
-Man, I love the Rust build system.
