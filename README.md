@@ -12,10 +12,10 @@ pre-compiled binaries will be available very soon.
 ## Manual Compilation
 ### Dependencies
  - Rust compiler
- - The compiler is written in Rust, but the linker is written in C. The Rust build file is set up to compile the C files itself, but you still need to have a C compiler installed.
+ - C compiler
  - CMake
  - Make
- - libbfd, or all of GNU binutils
+ - libbfd, or all of GNU binutils (available on Windows with mingw and cygwin, i believe)
 
 ### Commands
  - `make -C lib/jlinker lib` (for Windows: `nmake -C lib/jlinker lib`)
