@@ -1,6 +1,9 @@
 use std::{ffi::CString, io::Write};
 use crate::{expr::parser::Parser, linker::j_link, token::{literal::Literal, scanner::Scanner}};
-use super::{Expr, asm_type::{AsmLanguage, AsmTarget, NASMRegSize, NASMRegBase}, Environment};
+use super::{Expr, Environment};
+
+pub mod asm_type;
+use asm_type::{AsmLanguage, AsmTarget, NASMRegSize, NASMRegBase};
 
 pub struct CodeGenerator {
     code_vec: Vec<Code>,

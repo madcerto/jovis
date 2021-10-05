@@ -2,9 +2,7 @@ use std::io::prelude::*;
 use std::io::Result;
 use expr::compiler::Environment;
 use expr::compiler::TypeCheck;
-use expr::compiler::asm_type::AsmLanguage;
-use expr::compiler::code_generator::CodeGenerator;
-use expr::compiler::asm_type::AsmTarget;
+use expr::compiler::code_generator::{CodeGenerator, asm_type::{AsmLanguage, AsmTarget}};
 use expr::parser::Parser;
 use token::scanner::Scanner;
 

@@ -3,7 +3,6 @@ mod dtype;
 mod interpreter;
 mod type_checker;
 mod decl;
-pub mod asm_type;
 pub mod core_lib;
 pub mod code_generator;
 
