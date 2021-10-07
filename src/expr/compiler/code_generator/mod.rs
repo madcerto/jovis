@@ -1,4 +1,4 @@
-use std::{ffi::CString, io::Write};
+use std::{collections::HashMap, ffi::CString, io::Write};
 use crate::{expr::parser::Parser, linker::j_link, token::{literal::Literal, scanner::Scanner}};
 use super::{Expr, Environment};
 
@@ -154,6 +154,47 @@ impl CodeGenerator {
                     text.replace_range((i-line_start)..(i-line_start+n), register.to_str(NASMRegSize::L64).as_str());
                     self.available_regs.push(register);
                 }
+
+                // handle registers
+                let mut regs: HashMap<Option<String>, NASMRegBase> = HashMap::new();
+                let mut offset = 0;
+                for (mut i, _) in text.clone().match_indices("jreg") {
+                    i -= offset;
+                    let reg_size = match text.get((i+4)..(i+6)).unwrap() {
+                        "1#" => NASMRegSize::L8,
+                        "2#" => NASMRegSize::L16,
+                        "4#" => NASMRegSize::L32,
+                        "8#" => NASMRegSize::L64,
+                        c => panic!("{}", c)
+                    };
+                    let mut chars = text.chars();
+                    if chars.nth(i+6).map(|c| c.is_whitespace() || c == ',') != Some(true) {
+                        let mut j = 6;
+                        while chars.next().map(|c| c.is_whitespace()) != Some(true)
+                            { j += 1 }
+                        let alias = text.get((i+6)..(i+j)).unwrap().to_owned(); // TODO: err handling
+                        let reg_base = if let Some(reg) = regs.get(&Some(alias.clone())) { reg.clone() }
+                        else {
+                            let reg_base = self.pop_available_reg(reg_opt);
+                            regs.insert(Some(alias), reg_base.clone());
+                            reg_base
+                        };
+                        let reg_str = reg_base.to_str(reg_size);
+                        offset += j-reg_str.len();
+                        text.replace_range(i..(i+j), reg_str.as_str());
+                    } else {
+                        let reg_base = self.pop_available_reg(reg_opt);
+                        regs.insert(None, reg_base.clone());
+                        let reg_str =reg_base.to_str(reg_size);
+                        offset += 6-reg_str.len();
+                        text.replace_range(i..(i+6), reg_str.as_str());
+                    }
+                }
+                for (_, reg) in regs
+                    { self.available_regs.push(reg) }
+                
+                // TODO: replace semicolons with newlines
+                text = text.replace(';', "\n");
 
                 // add text to current code object
                 self.cur_code.asm.append(&mut text.as_bytes().to_vec());
