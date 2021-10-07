@@ -193,7 +193,7 @@ impl CodeGenerator {
                 for (_, reg) in regs
                     { self.available_regs.push(reg) }
                 
-                // TODO: replace semicolons with newlines
+                // replace semicolons with newlines
                 text = text.replace(';', "\n");
 
                 // add text to current code object
