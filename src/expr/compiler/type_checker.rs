@@ -54,7 +54,8 @@ impl TypeCheck for Expr {
                         Ok(dtype)
                     },
                     None => Err(TypeError::new(
-                        format!("object of type {:?} has no msg {}", self_t, msg_name.lexeme), Some(msg_name.clone())
+                        format!("object of type {:?} has no msg {}", self_t, msg_name.lexeme),
+                        Some(msg_name.clone())
                     )),
                 }
             },
@@ -117,7 +118,7 @@ impl TypeCheck for Expr {
 
                 Ok(ret_type)
             },
-            Expr::Object(exprs) => { // TODO msg body
+            Expr::Object(exprs) => {
                 let mut size = 0;
                 let mut msgs = vec![];
                 for expr in exprs {
@@ -132,12 +133,18 @@ impl TypeCheck for Expr {
                             let decl = Decl::from_bytes(decl_slice, env)
                                 .ok_or(TypeError::new("cannot get declaration name from stack".into(), Some(op.clone())))?;
                             let name  = decl.name;
-                            let dtype = decl.dtype;
-                            if right.check(env)? != dtype {
-                                return Err(TypeError::new("value does not match declaration".into(), None));
-                            }
-                            let constructor = move |_self_expr: Option<Box<Expr>>, _env: &Environment, _arg: Option<Box<Expr>>|
-                            { Expr::Object(vec![]) }; // TODO: replace with asm node, use size for offset
+                            let dtype = decl.dtype.union(&right.check(env)?)
+                                .ok_or(TypeError::new("value does not match declaration".into(), None))?;
+                            let dtype_clone = dtype.clone();
+                            let constructor = move |self_expr: Option<Box<Expr>>, _env: &Environment, _arg: Option<Box<Expr>>|
+                            { Expr::Asm(
+                                Box::new(Expr::Object(vec![])),
+                                Box::new(dtype_clone.to_expr()),
+                                Box::new(Expr::Literal(Literal::String(format!(
+                                    " lea jreg#stack_offset, [rbp+ j# {} +{}]; jret# addr( jreg#stack_offset ) ",
+                                    self_expr.unwrap().to_syntax(), size+dtype_clone.size
+                                ))))
+                            )};
                             size += dtype.size;
                             msgs.push(Msg::new(name, Rc::new(constructor), dtype.clone(), None));
                         }
@@ -146,7 +153,7 @@ impl TypeCheck for Expr {
                         }
                     }
                 }
-                Ok(DType::new(size, msgs, false, true)) // TODO: unknown or not?
+                Ok(DType::new(size, msgs, false, true))
             },
             Expr::CodeBlock(exprs) => {
                 let mut last_type = DType::new(0, vec![], false, true);
@@ -155,7 +162,7 @@ impl TypeCheck for Expr {
                 }
                 Ok(last_type)
             },
-            Expr::Fn(capture_list, expr) => { // 2 TODOs 1 future
+            Expr::Fn(capture_list, expr) => { // TODO: add unnamed captures
                 let mut new_env = Environment::new();
                 // add capture list to new environment
                 for expr in capture_list {
@@ -164,7 +171,7 @@ impl TypeCheck for Expr {
                             match arg_opt {
                                 Some(_) => {
                                     let _dtype = expr.check(env)?;
-                                    todo!() // captured expressions have to be named
+                                    return Err(TypeError::new("unnamed captures not supported yet. put your value in an assignment".into(), Some(msg_name)))
                                 },
                                 None => {
                                     let (bytes, dtype) = expr.interpret(env)

@@ -33,6 +33,7 @@ impl Decl {
         let dtype = val.check(env)?;
         let final_dtype = self.dtype.union(&dtype)
             .ok_or(TypeError::new("initialization value does not match declared type".into(), None))?;
+        // println!("{:?} {:?} {:?}", self.dtype, dtype, final_dtype);
 
         match val.interpret(env) {
             Some((bytes, ct_dtype)) => {
@@ -42,8 +43,8 @@ impl Decl {
                 }
                 let constructor = move |_: Option<Box<Expr>>, _: &Environment, _: Option<Box<Expr>>|
                 { Expr::Object(byte_lits.clone()) };
-                if ct_dtype == dtype {
-                    env.add_rt_msg(Msg::new(self.name.clone(), Rc::new(constructor.clone()), dtype.clone(), None));
+                if ct_dtype == final_dtype {
+                    env.add_rt_msg(Msg::new(self.name.clone(), Rc::new(constructor.clone()), final_dtype.clone(), None));
                 } else {
                     // add runtime msg TODO: defer code to a function
                     let constructor = move |_: Option<Box<Expr>>, _: &Environment, _: Option<Box<Expr>>|

@@ -78,11 +78,11 @@ impl PartialEq for DType {
     // used when a value of other is trying to be used as a value of self
     fn eq(&self, other: &Self) -> bool {
         if self.size_unknown {
-            if other.size <= self.size {
+            if other.size < self.size {
                 return false
             }
         } else if other.size_unknown {
-            if self.size <= other.size {
+            if self.size < other.size {
                 return false
             }
         } else {
@@ -93,13 +93,13 @@ impl PartialEq for DType {
 
         if self.msgs_unknown {
             for msg in &self.msgs {
-                if other.get_msg(&msg.name) == None {
+                if other.get_msg(&msg.name) != Some(msg.clone()) {
                     return false
                 }
             }
         } else if other.msgs_unknown {
             for msg in &other.msgs {
-                if self.get_msg(&msg.name) == None {
+                if self.get_msg(&msg.name) == Some(msg.clone()) {
                     return false
                 }
             }
