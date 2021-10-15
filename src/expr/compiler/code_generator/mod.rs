@@ -377,7 +377,7 @@ impl CodeGenerator {
         #[cfg(target_pointer_width = "64")]
         { addr_size = 8; }
         #[cfg(target_pointer_width = "32")]
-        { byte_size = 4; }
+        { addr_size = 4; }
         buf.extend_from_slice(&(0 as usize).to_ne_bytes()); // data ptr
         buf.extend_from_slice(&(0 as usize).to_ne_bytes()); // data size
         buf.extend_from_slice(&((6*addr_size as usize) as usize).to_ne_bytes()); // code ptr

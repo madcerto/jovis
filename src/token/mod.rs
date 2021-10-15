@@ -7,15 +7,17 @@ use literal::Literal;
 pub struct Token {
     pub ttype: TokenType,
     pub lexeme: String,
-    pub line: usize
+    pub line: usize,
+    pub start: usize
 }
 
 impl Token {
-    pub fn new(ttype: TokenType, lexeme: String, line: usize) -> Self {
+    pub fn new(ttype: TokenType, lexeme: String, line: usize, start: usize) -> Self {
         Self {
             ttype,
             lexeme,
-            line
+            line,
+            start
         }
     }
 

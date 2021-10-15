@@ -88,7 +88,7 @@ impl TypeCheck for Expr {
                     let mut expr = parser.parse();
 
                     expr.check(env)?;
-                    text.replace_range((i+2)..(n+i), expr.to_syntax().as_str());
+                    text.replace_range((i+2)..(n+i+2), expr.to_syntax().as_str());
                 }
                 // check return expressions
                 for (i,_) in text.clone().match_indices("jret#") {
@@ -186,10 +186,10 @@ impl TypeCheck for Expr {
                                 },
                             }
                         },
-                        Expr::Binary(mut left, Token{ ttype: TokenType::Equal, lexeme, line }, mut right) => {
-                            let tkn_opt = Some(Token::new(TokenType::Equal, lexeme, line));
-                            let msg_name = if let Expr::BinaryOpt(_, Token{ ttype: TokenType::Semicolon, lexeme, line }, _) = *left.clone() {
-                                let tkn_opt = Some(Token::new(TokenType::Semicolon, lexeme, line));
+                        Expr::Binary(mut left, Token{ ttype: TokenType::Equal, lexeme, line, start }, mut right) => {
+                            let tkn_opt = Some(Token::new(TokenType::Equal, lexeme, line, start));
+                            let msg_name = if let Expr::BinaryOpt(_, Token{ ttype: TokenType::Semicolon, lexeme, line, start }, _) = *left.clone() {
+                                let tkn_opt = Some(Token::new(TokenType::Semicolon, lexeme, line, start));
                                 let decl = Decl::from_expr(&mut *left, env)
                                     .ok_or(TypeError::new("could not form declaration".into(), tkn_opt))?;
                                 decl.name
@@ -248,7 +248,7 @@ impl TypeCheck for Expr {
                 str.push_str(right.to_syntax().as_str());
                 str
             },
-            Expr::MsgEmission(_, _, _) => panic!("unexpected msg emission in checked ast"),
+            Expr::MsgEmission(_, _, _) => panic!("unexpected msg emission in checked ast: {:?}", self),
             Expr::BinaryOpt(left, op, right_opt) => {
                 let mut str = left.to_syntax();
                 str.push_str(&op.lexeme);

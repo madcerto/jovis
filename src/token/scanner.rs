@@ -93,10 +93,9 @@ impl Scanner {
             } else { self.scan_sym_ident() }),
 
             '#' => {
-                loop {
+                while !self.is_at_end() {
                     let c = self.advance();
                     if c == '\n' { self.line += 1; break }
-                    else if c == '\0' { break }
                 }
                 None
             },
@@ -142,7 +141,7 @@ impl Scanner {
     fn new_token(&self, ttype: TokenType) -> Token {
         let text = self.source.get(self.start..self.current).unwrap().to_string();
 
-        Token::new(ttype, text, self.line)
+        Token::new(ttype, text, self.line, self.start)
     }
 
     fn scan_char(&mut self) -> Result<Option<Token>, (usize, String)> {
