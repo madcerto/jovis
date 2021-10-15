@@ -64,7 +64,7 @@ impl TypeCheck for Expr {
                     Ok(DECL)
                 } else { panic!("unexpected binary_opt operator") }
             },
-            Expr::Asm(_, ret_type, text_expr) => {
+            Expr::Asm(asm_type, ret_type, text_expr) => { // 1 future TODO
                 let mut text = match *text_expr.clone() {
                     Expr::Literal(Literal::String(string)) => string,
                     _ => match text_expr.interpret(env) { // TODO: if string literal, get string directly
@@ -79,13 +79,16 @@ impl TypeCheck for Expr {
                         None => return Err(TypeError::new("expected static expression".into(), None))
                     }
                 };
+
+                **asm_type = Expr::Object(vec![]); // TODO: handle asm types
                 
                 // check embedded jovis expressions
                 for (i,_) in text.clone().match_indices("j#") {
                     let mut scanner  = Scanner::new(text.get((i+2)..).unwrap().to_string());
-                    let (tokens, n) = scanner.scan_tokens_err_ignore();
+                    let tokens = scanner.scan_tokens_err_ignore();
                     let mut parser = Parser::new(tokens);
-                    let mut expr = parser.parse();
+                    let (mut expr, last_token) = parser.parse_and_last_token();
+                    let n = last_token.start + last_token.lexeme.len();
 
                     expr.check(env)?;
                     text.replace_range((i+2)..(n+i+2), expr.to_syntax().as_str());

@@ -132,9 +132,10 @@ impl CodeGenerator {
                 // handle embedded jovis expressions
                 for (i,_) in text.clone().match_indices("j#") {
                     let mut scanner  = Scanner::new(text.get((i+2)..).unwrap().to_string());
-                    let (tokens, n) = scanner.scan_tokens_err_ignore();
+                    let tokens = scanner.scan_tokens_err_ignore();
                     let mut parser = Parser::new(tokens);
-                    let expr = parser.parse();
+                    let (expr, last_token) = parser.parse_and_last_token();
+                    let n = last_token.start + last_token.lexeme.len() + 2;
 
                     // get last semicolon before jovis expression, and push everything before that into cur_code
                     let mut line_start = i;
@@ -168,9 +169,9 @@ impl CodeGenerator {
                         c => panic!("{}", c)
                     };
                     let mut chars = text.chars();
-                    if chars.nth(i+6).map(|c| c.is_whitespace() || c == ',') != Some(true) {
-                        let mut j = 6;
-                        while chars.next().map(|c| c.is_whitespace()) != Some(true)
+                    if chars.nth(i+6).map(|c| c.is_ascii_alphabetic() || c == '_') == Some(true) {
+                        let mut j = 7;
+                        while chars.next().map(|c| c.is_ascii_alphanumeric() || c == '_') == Some(true)
                             { j += 1 }
                         let alias = text.get((i+6)..(i+j)).unwrap().to_owned(); // TODO: err handling
                         let reg_base = if let Some(reg) = regs.get(&Some(alias.clone())) { reg.clone() }

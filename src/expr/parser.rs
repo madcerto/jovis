@@ -23,6 +23,16 @@ impl Parser {
             }
         }
     }
+    // parse and return last token with the expr
+    pub fn parse_and_last_token(&mut self) -> (Expr, Token) {
+        match self.expr() {
+            Ok(expr) => (expr, self.previous()),
+            Err(err) => match err.tkn.ttype {
+                TokenType::End => panic!("error at end: {}", err.msg),
+                _ => panic!("error at token {}: {}", err.tkn.to_string(), err.msg)
+            }
+        }
+    }
 
     fn expr(&mut self) -> Result<Expr, ParseError> {
         let mut expr = self.in_expr()?;
