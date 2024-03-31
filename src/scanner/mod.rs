@@ -1,5 +1,10 @@
+pub mod error;
+
+use crate::error::Error;
 use crate::token::{literal::Literal, Token, TokenType};
 use std::{collections::HashMap, str::FromStr};
+
+use self::error::ScannerError;
 
 pub struct Scanner {
     source: String,
@@ -35,7 +40,7 @@ impl Scanner {
         }
     }
 
-    pub fn scan_tokens(&mut self) -> Result<Vec<Token>, (usize, String)> {
+    pub fn scan_tokens(&mut self) -> Result<Vec<Token>, Error> {
         let mut tokens = Vec::new();
         while !self.is_at_end() {
             match self.scan_token()? {
@@ -63,7 +68,7 @@ impl Scanner {
         tokens
     }
 
-    fn scan_token(&mut self) -> Result<Option<Token>, (usize, String)> {
+    fn scan_token(&mut self) -> Result<Option<Token>, ScannerError> {
         // in jovis you might be able to remove the whole result type by passing the context
         // of the while loop's block to this function, and instead of returning none it just
         // returns from that context, basically acting like a `continue` statement.
@@ -163,28 +168,31 @@ impl Scanner {
         Token::new(ttype, text, self.line, self.start)
     }
 
-    fn scan_char(&mut self) -> Result<Option<Token>, (usize, String)> {
+    fn scan_char(&mut self) -> Result<Option<Token>, ScannerError> {
         let next_char = self.peak();
         if next_char == '\n' || next_char == '\0' {
-            Err((self.line, "Unterminated character literal".to_string()))
+            Err(ScannerError::Err(
+                self.line,
+                "Unterminated character literal",
+            ))
         } else {
             let val = self.advance();
             if self.peak() == '\'' {
                 self.advance();
                 Ok(Some(self.new_token(TokenType::Literal(Literal::Char(val)))))
             } else {
-                Err((
+                Err(ScannerError::Err(
                     self.line,
-                    "Unterminated or oversized character literal".to_string(),
+                    "Unterminated or oversized character literal",
                 ))
             } // TODO: keep scanning after one character to see if it's oversized or unterminated
         }
     }
-    fn scan_string(&mut self) -> Result<Option<Token>, (usize, String)> {
+    fn scan_string(&mut self) -> Result<Option<Token>, ScannerError> {
         let mut next_char = self.peak();
         while next_char != '"' {
             if next_char == '\0' {
-                return Err((self.line, "Unterminated string".to_string()));
+                return Err(ScannerError::Err(self.line, "Unterminated string"));
             } else {
                 if next_char == '\n' {
                     self.line += 1;

@@ -9,6 +9,7 @@ use scanner::Scanner;
 use std::io::prelude::*;
 use std::io::Result;
 
+mod error;
 mod expr;
 mod linker;
 mod pprint;
@@ -45,9 +46,7 @@ fn parse_file(path: String) -> Result<()> {
 
             generator.generate_ir(ast, "test.jir".into(), AsmTarget::X86Unix, &mut env);
         }
-        Err((line, message)) => {
-            println!("{} at {}", message, line)
-        }
+        Err(e) => println!("{e}"),
     }
 
     Ok(())
