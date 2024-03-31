@@ -1,15 +1,19 @@
-use std::io::prelude::*;
-use std::io::Result;
+use expr::compiler::code_generator::{
+    asm_type::{AsmLanguage, AsmTarget},
+    CodeGenerator,
+};
 use expr::compiler::Environment;
 use expr::compiler::TypeCheck;
-use expr::compiler::code_generator::{CodeGenerator, asm_type::{AsmLanguage, AsmTarget}};
 use expr::parser::Parser;
-use token::scanner::Scanner;
+use scanner::Scanner;
+use std::io::prelude::*;
+use std::io::Result;
 
-mod token;
 mod expr;
-mod pprint;
 mod linker;
+mod pprint;
+mod scanner;
+mod token;
 
 fn main() -> Result<()> {
     let args: Vec<String> = std::env::args().collect();
@@ -38,10 +42,12 @@ fn parse_file(path: String) -> Result<()> {
             ast.check(&mut env).unwrap();
             // generate code from ast; go back down the mountain
             let generator = CodeGenerator::new(AsmLanguage::NASM);
-            
+
             generator.generate_ir(ast, "test.jir".into(), AsmTarget::X86Unix, &mut env);
-        },
-        Err((line, message)) => {println!("{} at {}", message, line)}
+        }
+        Err((line, message)) => {
+            println!("{} at {}", message, line)
+        }
     }
 
     Ok(())

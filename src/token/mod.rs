@@ -1,4 +1,3 @@
-pub mod scanner;
 pub mod literal;
 
 use literal::Literal;
@@ -8,7 +7,7 @@ pub struct Token {
     pub ttype: TokenType,
     pub lexeme: String,
     pub line: usize,
-    pub start: usize
+    pub start: usize,
 }
 
 impl Token {
@@ -17,7 +16,7 @@ impl Token {
             ttype,
             lexeme,
             line,
-            start
+            start,
         }
     }
 
@@ -35,9 +34,12 @@ pub enum TokenType {
     // Reserved symbols
     Colon,
     Period,
-    LeftBrace, RightBrace,
-    LeftParen, RightParen,
-    LeftSqBracket, RightSqBracket,
+    LeftBrace,
+    RightBrace,
+    LeftParen,
+    RightParen,
+    LeftSqBracket,
+    RightSqBracket,
     Carrot,
     Pipe,
     Semicolon,
@@ -55,6 +57,5 @@ pub enum TokenType {
     // Index(u32),
     Identifier,
     // ScopedIdent,
-
-    End
+    End,
 }
